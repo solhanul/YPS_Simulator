@@ -11,7 +11,7 @@
         <section id="screen-intro" class="screen active">
             <div class="center-box">
                 <h1>Baseball Player Simulator</h1>
-                <p>관계 중심 시뮬레이션</p>
+                <p>야구 선수 시뮬레이션</p>
                 <button id="btn-start">시작하기</button>
             </div>
         </section>
@@ -30,13 +30,17 @@
                     </div>
 
                     <div class="form-group">
-                        <label>나이</label>
-                        <input type="number" id="input-age">
+                        <label>연차</label>
+                        <div id="career-tags" class="tag-container">
+                            <!-- JS로 태그 생성 -->
+                        </div>  
                     </div>
 
                     <div class="form-group">
-                        <label>연차</label>
-                        <input type="number" id="input-career">
+                        <label>포지션</label>
+                         <div id="position-tags" class="tag-container">
+                            <!-- JS로 태그 생성 -->
+                        </div>  
                     </div>
 
                     <div class="form-group">
@@ -51,7 +55,7 @@
                         <input type="checkbox" id="input-married">기혼</label>
                     </div>
 
-                    <button id="btn-add-char">선수 등록</button>
+                    <button id="btn-add-char" style="margin-bottom: 10px;">선수 등록</button>
                     <div class="data-io-group">
                         <button id="btn-export" class="btn-io">DATA SAVE (내보내기)</button>
                         <button id="btn-import" class="btn-io">DATA LOAD (불러오기)</button>
@@ -68,7 +72,7 @@
 
             </div>
 
-            <button id="btn-to-relation" onclick="
+            <button id="btn-to-relation" style="margin-top: 10px;" onclick="
                 document.getElementById('screen-creation').classList.remove('active');
                 document.getElementById('screen-relation').classList.add('active');
                 refreshRelationSelectors();
@@ -114,18 +118,18 @@
 
             </div>
 
-            <button id="btn-to-game" onclick="
+            <button id="btn-to-game" style="margin-top: 10px;" onclick="
                 document.getElementById('screen-relation').classList.remove('active');
                 document.getElementById('screen-game').classList.add('active');
             ">
-                메인 게임 시작
+                메인 시뮬 시작
             </button>
         </section>
 
-        <!-- 메인게임 -->
+        <!-- 메인 시뮬 -->
         <section id="screen-game" class="screen">
             <header class="game-header">
-                <h2>메인 게임</h2>
+                <h2>메인 시뮬</h2>
                 <span id="day-display-static">DAY 1</span>
             </header>
 
@@ -134,6 +138,7 @@
                 <!-- 로그 -->
                 <div class="panel log-panel">
                 <h3>기록</h3>
+                <button id="btn-show-all-logs" class="small-link">&larr; 이전로그보기</button>
                 <div id="log-area"></div>
                 </div>
 
@@ -152,11 +157,6 @@
                 </button>
             </div>
         </section>
-        <div class="today-header">
-          <button id="day-display" class="day-display">DAY 1</button>
-          <button id="btn-show-all-logs" class="small-link">&larr; 이전로그보기</button>
-        </div>
-        <div id="today-log-area" class="today-log-area"></div>
 
         <script src="script.js"></script>
 

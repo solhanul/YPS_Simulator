@@ -8,25 +8,40 @@ document.getElementById("btn-start").onclick = () => {
   creationScreen.classList.add("active");
 };
 
+
 /* 캐릭터 데이터 */
 
 const characters = [];
 
-function createCharacter({ name, age, career, personality, married }) {
+function createCharacter({ name, career, position, personality, married }) {
   return {
     id: crypto.randomUUID(),
     name,
-    age,
     career,
+    position,
     personality,
     married,
-    mental: 100,
-    status: "active",
+    mental: 50,
+    energy: 100,
     relations: {}
   };
 }
 
-/* 성격 태그 생성 */
+/* 태그 생성 */
+
+const CAREER_OPTIONS = [
+  "신인",
+  "중참",
+  "중고참",
+  "베테랑"
+]
+
+const POSITION_OPTIONS = [
+  "투수",
+  "포수",
+  "내야수",
+  "외야수"
+];
 
 const PERSONALITY_OPTIONS = [
   "차분함",
@@ -37,6 +52,49 @@ const PERSONALITY_OPTIONS = [
   "헌신적"
 ];
 
+
+/* 캐릭터 설정 */
+
+const careerContainer = document.getElementById("career-tags");
+
+  CAREER_OPTIONS.forEach(tag => {
+  const btn = document.createElement("button");
+  btn.className = "tag-btn";
+  btn.textContent = tag;
+  btn.onclick = () => {
+    careerContainer.querySelectorAll(".tag-btn")
+      .forEach(b => b.classList.remove("selected"));
+    btn.classList.add("selected");
+  };
+  careerContainer.appendChild(btn);
+});
+
+function getSelectedCareer() {
+  const btn = careerContainer.querySelector(".tag-btn.selected");
+  return btn ? btn.textContent : null;
+}
+
+
+const positionContainer = document.getElementById("position-tags");
+
+POSITION_OPTIONS.forEach(tag => {
+  const btn = document.createElement("button");
+  btn.className = "tag-btn";
+  btn.textContent = tag;
+  btn.onclick = () => {
+    positionContainer.querySelectorAll(".tag-btn")
+      .forEach(b => b.classList.remove("selected"));
+    btn.classList.add("selected");
+  };
+  positionContainer.appendChild(btn);
+});
+
+function getSelectedPosition() {
+  const btn = positionContainer.querySelector(".tag-btn.selected");
+  return btn ? btn.textContent : null;
+}
+
+
 const personalityContainer = document.getElementById("personality-tags");
 
 PERSONALITY_OPTIONS.forEach(tag => {
@@ -44,7 +102,7 @@ PERSONALITY_OPTIONS.forEach(tag => {
   btn.className = "tag-btn";
   btn.textContent = tag;
   btn.onclick = () => {
-    document.querySelectorAll(".tag-btn")
+    personalityContainer.querySelectorAll(".tag-btn")
       .forEach(b => b.classList.remove("selected"));
     btn.classList.add("selected");
   };
@@ -52,9 +110,10 @@ PERSONALITY_OPTIONS.forEach(tag => {
 });
 
 function getSelectedPersonality() {
-  const btn = document.querySelector(".tag-btn.selected");
+  const btn = personalityContainer.querySelector(".tag-btn.selected");
   return btn ? btn.textContent : null;
 }
+
 
 /* 성격 보정 */
 
@@ -73,18 +132,18 @@ function personalityBias(player) {
 
 document.getElementById("btn-add-char").onclick = () => {
   const name = document.getElementById("input-name").value.trim();
-  const age = parseInt(document.getElementById("input-age").value, 10);
-  const career = parseInt(document.getElementById("input-career").value, 10);
+  const career = getSelectedCareer();
+  const position = getSelectedPosition();
   const married = document.getElementById("input-married").checked;
   const personality = getSelectedPersonality();
 
-  if (!name || isNaN(age) || isNaN(career) || !personality) {
+  if (!name || !career || !position || !personality) {
     alert("모든 항목을 입력하세요.");
     return;
   }
 
   characters.push(createCharacter({
-    name, age, career, personality, married
+    name, career, position, personality, married
   }));
 
   renderCharacterList();
@@ -104,7 +163,8 @@ function renderCharacterList() {
     card.className = "mini-card";
     card.innerHTML = `
       <strong>${c.name}</strong><br>
-      ${c.age}세 / ${c.career}년차<br>
+      연차: ${c.career}<br>
+      포지션: ${c.position}<br>
       성격: ${c.personality}<br>
       ${c.married ? "기혼" : "미혼"}
       <button class="btn-delete">×</button>
@@ -121,8 +181,6 @@ function renderCharacterList() {
 
 function clearInputs() {
   document.getElementById("input-name").value = "";
-  document.getElementById("input-age").value = "";
-  document.getElementById("input-career").value = "";
   document.getElementById("input-married").checked = false;
   document.querySelectorAll(".tag-btn.selected")
     .forEach(b => b.classList.remove("selected"));
