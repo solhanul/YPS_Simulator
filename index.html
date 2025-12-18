@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Baseball Player Simulator</title>
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <!-- 인트로 -->
+        <section id="screen-intro" class="screen active">
+            <div class="center-box">
+                <h1>Baseball Player Simulator</h1>
+                <p>관계 중심 시뮬레이션</p>
+                <button id="btn-start">시작하기</button>
+            </div>
+        </section>
+
+        <!-- 캐릭터 설정 -->
+        <section id="screen-creation" class="screen">
+            <h2>선수 생성</h2>
+
+            <div class="creation-layout">
+
+                <!-- 입력 패널 -->
+                <div class="panel">
+                    <div class="form-group">
+                        <label>이름</label>
+                        <input type="text" id="input-name">
+                    </div>
+
+                    <div class="form-group">
+                        <label>나이</label>
+                        <input type="number" id="input-age">
+                    </div>
+
+                    <div class="form-group">
+                        <label>연차</label>
+                        <input type="number" id="input-career">
+                    </div>
+
+                    <div class="form-group">
+                        <label>성격</label>
+                        <div id="personality-tags" class="tag-container">
+                        <!-- JS로 태그 생성 -->
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                        <input type="checkbox" id="input-married">기혼</label>
+                    </div>
+
+                    <button id="btn-add-char">선수 등록</button>
+                    <div class="data-io-group">
+                        <button id="btn-export" class="btn-io">DATA SAVE (내보내기)</button>
+                        <button id="btn-import" class="btn-io">DATA LOAD (불러오기)</button>
+                        <input type="file" id="file-input" accept=".json" style="display:none">
+                    </div>
+
+                </div>
+
+                <!-- 리스트 -->
+                <div class="panel">
+                    <h3>등록된 선수</h3>
+                    <div id="char-list"></div>
+                </div>
+
+            </div>
+
+            <button id="btn-to-relation" onclick="
+                document.getElementById('screen-creation').classList.remove('active');
+                document.getElementById('screen-relation').classList.add('active');
+                refreshRelationSelectors();
+            ">
+                관계 설정으로 이동
+            </button>
+        </section>
+
+        <!-- 관계설정 -->
+        <section id="screen-relation" class="screen">
+            <h2>관계 설정</h2>
+
+            <div class="relation-layout">
+
+                <div class="panel">
+                    <div class="form-group">
+                        <label>주체</label>
+                        <select id="select-from"></select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>대상</label>
+                        <select id="select-to"></select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>감정</label>
+                        <div class="emotion-group">
+                            <button class="emotion-btn" data-emotion="interest">호감</button>
+                            <button class="emotion-btn" data-emotion="dislike">혐오</button>
+                            <button class="emotion-btn" data-emotion="obsession">집착</button>
+                            <button class="emotion-btn" data-emotion="neutral">관심없음</button>
+                        </div>
+                    </div>
+                    <button id="btn-set-relation">관계 등록</button>
+                </div>
+                <div class="relation-table-wrapper">
+                    <h3>관계 표</h3>
+                    <table id="relation-table">
+                        <!-- JS로 생성 -->
+                    </table>
+                </div>
+
+            </div>
+
+            <button id="btn-to-game" onclick="
+                document.getElementById('screen-relation').classList.remove('active');
+                document.getElementById('screen-game').classList.add('active');
+            ">
+                메인 게임 시작
+            </button>
+        </section>
+
+        <!-- 메인게임 -->
+        <section id="screen-game" class="screen">
+            <header class="game-header">
+                <h2>메인 게임</h2>
+                <span id="day-display-static">DAY 1</span>
+            </header>
+
+            <div class="game-layout">
+
+                <!-- 로그 -->
+                <div class="panel log-panel">
+                <h3>기록</h3>
+                <div id="log-area"></div>
+                </div>
+
+                <!-- 이벤트 -->
+                <div class="panel event-panel" id="event-container" style="display:none;">
+                <!-- JS로 이벤트 삽입 -->
+                </div>
+
+            </div>
+
+            <div class="game-controls">
+                <button id="btn-next-day">하루 진행</button>
+
+                <button id="btn-export-log" onclick="exportLogsAsTXT()">
+                로그 txt 저장
+                </button>
+            </div>
+        </section>
+        <div class="today-header">
+          <button id="day-display" class="day-display">DAY 1</button>
+          <button id="btn-show-all-logs" class="small-link">&larr; 이전로그보기</button>
+        </div>
+        <div id="today-log-area" class="today-log-area"></div>
+
+        <script src="script.js"></script>
+
+        <script>
+        /* 로그 화면 렌더링 */
+        function renderLogs() {
+        const area = document.getElementById("log-area");
+        area.innerHTML = "";
+
+        gameLogs.forEach(log => {
+            const div = document.createElement("div");
+            div.className = "log-entry";
+            div.textContent = `[DAY ${log.day}] ${log.text}`;
+            area.appendChild(div);
+        });
+
+        area.scrollTop = area.scrollHeight;
+        }
+
+        /* TXT 저장 */
+        function exportLogsAsTXT() {
+        const content = gameLogs
+            .map(l => `[DAY ${l.day}] ${l.text}`)
+            .join("\n");
+
+        const blob = new Blob([content], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "game_log.txt";
+        a.click();
+
+        URL.revokeObjectURL(url);
+        }
+        </script>
+        <script>
+            document.getElementById("btn-export").onclick = () => {
+            const data = {
+                characters,
+                gameLogs,
+                currentDay
+            };
+
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "relation_simulation_save.json";
+            a.click();
+
+            URL.revokeObjectURL(url);
+            };
+        </script>
+        <script>
+            const fileInput = document.getElementById("file-input");
+            document.getElementById("btn-import").onclick = () => {
+            fileInput.click();
+            };
+
+            fileInput.onchange = e => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = ev => {
+                try {
+                const data = JSON.parse(ev.target.result);
+
+                characters.length = 0;
+                characters.push(...data.characters);
+
+                gameLogs.length = 0;
+                gameLogs.push(...(data.gameLogs || []));
+
+                currentDay = data.currentDay || 1;
+
+                renderCharacterList();
+                refreshRelationSelectors();
+                renderRelationTable();
+
+                alert("데이터를 성공적으로 불러왔습니다.");
+                } catch (err) {
+                alert("잘못된 파일입니다.");
+                }
+            };
+
+            reader.readAsText(file);
+            };
+        </script>
+    </body>
+</html>
