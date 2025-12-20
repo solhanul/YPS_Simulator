@@ -941,42 +941,26 @@ if (dayDisplayBtn) {
 /* 필수 함수 */
 function chance(p) { return Math.random() < p; }
 
-function applyMental(c, delta) {
+async function applyMental(c, delta) {
   const bias = personalityBias(c);
   const mult = bias?.mental ? 1 + bias.mental / 100 : 1;
 
   const d = Math.round(delta * mult);
 
   c.mental = Math.max(0, Math.min(100, c.mental + d));
-}
-
-function applyEnergy(player, delta) {
-  if (!player) return;
-
-  player.energy = Math.max(0, Math.min(100, player.energy + delta));
-
-  // console.log(`${player.name}의 에너지가 ${delta > 0 ? "증가" : "감소"}하여 현재 ${player.energy}입니다.`);
+  await logLine("",`${c.name}의 멘탈이 ${d}만큼 ${delta > 0 ? "증가" : "감소"}`, "info", 0.4);
 }
 
 
-function logLine(text, type = "system") {
-  const logBox = $("#console-log");
-  if (!logBox) return;
-  const cursor = logBox.querySelector(".log-cursor");
+async function applyEnergy(c, delta) {
+  if (!c) return;
 
-  const p = document.createElement("p");
-  p.className = `log ${type}`;
-  p.textContent = text;
+  c.energy = Math.max(0, Math.min(100, c.energy + delta));
 
-  if (cursor) logBox.insertBefore(p, cursor);
-  else logBox.appendChild(p);
-
-  logBox.scrollTop = logBox.scrollHeight;
+  await logLine("",`${c.name}의 에너지가 ${delta}만큼 ${delta > 0 ? "증가" : "감소"}`,"info", 0.4);
 }
-function emphasizeText(text, style = "highlight") {
-  // style 종류: "highlight", "bold", "italic", "cheerful" 등
-  return `<span class="${style}">${text}</span>`;
-}
+
+
 
 async function logEmphasizedLine(prefix, text, style = "highlight") {
   const logBox = $("#console-log");
@@ -1056,11 +1040,13 @@ async function writeGameLog(entry) {
   }
 }
 
-async function logGlitchLine(prefix, text, style = "system", delay = 0.6) {
+async function logLine(prefix, text, style = "system", delay = 0.6) {
   const entry = { day: currentDay, text: `${prefix} ${text}` };
   // 영구 로그에 저장하고 시각 큐로 표시되도록 writeGameLog 사용
   await writeGameLog(entry);
   await sleep(Math.round(delay * 1000));
+  const logArea = document.getElementById("log-area");
+  logArea.scrollTop = logArea.scrollHeight;
 }
 
 function askChoice(opts) {
@@ -1116,11 +1102,11 @@ async function eventSNS(c) {
   if (!chance(0.10)) return;
 
   try {
-    await logGlitchLine(">>", `SNS 디엠이 왔다`, "warning", 0.55);
+    await logLine(">>", ` ${c.name}에게 SNS 디엠이 왔다`, "warning", 0.55);
 
     const ans = await askChoice({
       title: "[CHOICE]",
-      body: `디엠에 답을 하시겠습니까?`,
+      body: ` ${c.name}, 디엠에 답을 하시겠습니까?`,
       options: [
         { label: "대답한다", value: "enter" },
         { label: "무시한다", value: "ignore" },
@@ -1129,22 +1115,22 @@ async function eventSNS(c) {
 
     if (ans === "ignore") {
       applyMental(c, -5);
-      logLine(`>> [SYSTEM] ${c.name}은(는) 디엠에 답을 하지 않았다.`, "warning");
+      await logLine(">>", `[SYSTEM] ${c.name}은(는) 디엠에 답을 하지 않았다.`, "warning", 0.75);
       if (c.mental <= 0) {
         c.mental = 0;
-        logLine(`>> [SYSTEM] ${c.name}은(는) 더 버티지 못하고 2군으로 내려갔습니다`, "warning");
+        await logLine(">>", `[SYSTEM] ${c.name}은(는) 더 버티지 못하고 2군으로 내려갔습니다`, "warning", 0.85);
         return;
       }
       return;
     }
-    else if (!chance(0.10)) {
-      await logGlitchLine(">>", `한 아이의 디엠을 받았습니다`, "warning", 0.75);
-      await logGlitchLine(">>", `아이에게 보낸 디엠이 퍼져 미담으로 번졌습니다`, "warning", 0.85);
+    else if (!chance(0.60)) {
+      await logLine(">>", ` ${c.name}이 한 아이의 디엠을 받았습니다`, "warning", 0.75);
+      await logLine(">>", `아이에게 보낸 디엠이 퍼져 미담으로 번졌습니다`, "warning", 0.85);
       applyMental(c, +10)
     } 
     else {
-      await logGlitchLine(">>", `화난 팬의 디엠을 받았습니다`, "warning", 0.75);
-      await logGlitchLine(">>", `디엠의 답이 논란이 되어 부정적인 여론이 돕니다.`, "warning", 0.85);
+      await logLine(">>", `화난 팬의 디엠을 받았습니다`, "warning", 0.75);
+      await logLine(">>", ` ${c.name}의 디엠의 답이 논란이 되어 부정적인 여론이 돕니다.`, "warning", 0.85);
       applyMental(c, -15);
       applyEnergy(c, -15)
     }
@@ -1154,15 +1140,15 @@ async function eventSNS(c) {
 }
 
 async function eventHardHitBall(c) {      
-  if (c.position !== 'pitcher') return;
+  if (c.position !== '투수') return;
   if (!chance(0.10)) return;
 
   try {
-    await logGlitchLine(">>", `강습타구가 날라온다`, "warning", 0.55);
+    await logLine(">>", ` ${c.name}에게 강습타구가 날라온다`, "warning", 0.55);
 
     const ans = await askChoice({
       title: "[CHOICE]",
-      body: `강습타구를 잡으시겠습니까?`,
+      body: ` ${c.name}, 강습타구를 잡으시겠습니까?`,
       options: [
         { label: "잡는다", value: "catch" },
         { label: "피한다", value: "ignore" },
@@ -1172,22 +1158,22 @@ async function eventHardHitBall(c) {
     if (ans === "ignore") {
 
       applyMental(c, -5);
-      logLine(`>> [SYSTEM] ${c.name}은(는) 점수를 주고 말았다.`, "warning");
+      await logLine(">>", `[SYSTEM] ${c.name}은(는) 점수를 주고 말았다.`, "warning",  0.75);
       if (c.mental <= 0) {
         c.mental = 0;
-        logLine(`>> [SYSTEM] ${c.name}은(는) 더 버티지 못하고 시합 후 2군으로 내려갔습니다`, "warning");
+        await logLine(">>", `[SYSTEM] ${c.name}은(는) 더 버티지 못하고 시합 후 2군으로 내려갔습니다`, "warning", 0.85);
         return;
       }
       return;
     }
     else if (!chance(0.10)) {
-      await logGlitchLine(">>", `강습타구를 제대로 잡아 1루로 송구하였습니다`, "warning", 0.75);
-      await logGlitchLine(">>", `병살을 잡아 이닝이 종료되었습니다`, "warning", 0.85);
+      await logLine(">>", `강습타구를 제대로 잡아 1루로 송구하였습니다`, "warning", 0.75);
+      await logLine(">>", `병살을 잡아 이닝이 종료되었습니다`, "warning", 0.85);
       applyMental(c, +10)
     } 
     else {
-      await logGlitchLine(">>", `강습타구에 맞았습니다`, "warning", 0.75);
-      await logGlitchLine(">>", `부상으로 다음 등판이 밀리게 되었습니다.`, "warning", 0.85);
+      await logLine(">>", ` ${c.name}이(가) 강습타구에 맞았습니다`, "warning", 0.75);
+      await logLine(">>", `부상으로 다음 등판이 밀리게 되었습니다.`, "warning", 0.85);
       applyMental(c, -10);
       applyEnergy(c, -20)
     }
@@ -1197,15 +1183,15 @@ async function eventHardHitBall(c) {
 }
 
 async function eventInfielderError(c) {
-  if (c.position !== 'infielder') return;
+  if (c.position !== '내야수') return;
   if (!chance(0.10)) return;
 
   try {
-    await logGlitchLine(">>", `옆 수비수와 ${c.name} 사이에 공이 굴러온다`, "warning", 0.55);
+    await logLine(">>", `옆 수비수와 ${c.name} 사이에 공이 굴러온다`, "warning", 0.55);
 
     const ans = await askChoice({
       title: "[CHOICE]",
-      body: `공을 잡으시겠습니까?`,
+      body: ` ${c.name}, 공을 잡으시겠습니까?`,
       options: [
         { label: "잡는다", value: "catch" },
         { label: "피한다", value: "ignore" },
@@ -1215,26 +1201,26 @@ async function eventInfielderError(c) {
     if (ans === "ignore") {
       if (!chance(0.30)) {
         applyMental(c, -5);
-        logLine(`>> [SYSTEM] ${c.name}은(는) 점수를 주고 말았다.`, "warning");
+        await logLine(">>", `[SYSTEM] ${c.name}은(는) 점수를 주고 말았다.`, "warning", 0.75);
         if (c.mental <= 0) {
           c.mental = 0;
-          logLine(`>> [SYSTEM] ${c.name}은(는) 더 버티지 못하고 시합 후 2군으로 내려갔습니다`, "warning");
+          await logLine(">>", `[SYSTEM] ${c.name}은(는) 더 버티지 못하고 시합 후 2군으로 내려갔습니다`, "warning", 0.85);
           return;}
       }
       else {
-        await logGlitchLine(">>", `옆 수비수가 공을 잡아 주자를 잡았습니다.`, "warning", 0.75);
+        await logLine(">>", `옆 수비수가 공을 잡아 주자를 잡았습니다.`, "warning", 0.75);
         applyMental(c, +3);
       }
       return;
     }
-    else if (!chance(0.10)) {
-      await logGlitchLine(">>", `공을 제대로 잡아 2루로 송구했다`, "warning", 0.75);
-      await logGlitchLine(">>", `병살을 잡아 이닝이 종료되었습니다`, "warning", 0.85);
+    else if (!chance(0.50)) {
+      await logLine(">>", ` ${c.name}이(가) 공을 제대로 잡아 2루로 송구했다`, "warning", 0.75);
+      await logLine(">>", `병살을 잡아 이닝이 종료되었습니다`, "warning", 0.85);
       applyMental(c, +10)
     } 
     else {
-      await logGlitchLine(">>", `옆 수비수와 겹쳐 둘 다 공을 놓쳤다`, "warning", 0.75);
-      await logGlitchLine(">>", `그 사이 주자가 홈으로 들어왔습니다.`, "warning", 0.85);
+      await logLine(">>", ` ${c.name}와(과) 옆 수비수와 겹쳐 둘 다 공을 놓쳤다`, "warning", 0.75);
+      await logLine(">>", `그 사이 주자가 홈으로 들어왔습니다.`, "warning", 0.85);
       applyMental(c, -10);
     }
   } catch (e) {
@@ -1243,15 +1229,15 @@ async function eventInfielderError(c) {
 }
 
 async function eventOutfielderError(c) {
-  if (c.position !== 'outfielder') return;
+  if (c.position !== '외야수') return;
   if (!chance(0.10)) return;
 
   try {
-    await logGlitchLine(">>", `옆 수비수와 ${c.name} 사이에 공이 날라온다`, "warning", 0.55);
+    await logLine(">>", `옆 수비수와 ${c.name} 사이에 공이 날라온다`, "warning", 0.55);
 
     const ans = await askChoice({
       title: "[CHOICE]",
-      body: `공을 잡으시겠습니까?`,
+      body: ` ${c.name}, 공을 잡으시겠습니까?`,
       options: [
         { label: "잡는다", value: "catch" },
         { label: "피한다", value: "ignore" },
@@ -1261,26 +1247,26 @@ async function eventOutfielderError(c) {
     if (ans === "ignore") {
       if (!chance(0.30)) {
         applyMental(c, -5);
-        logLine(`>> [SYSTEM] ${c.name}은(는) 점수를 주고 말았다.`, "warning");
+        await logLine(">>", `[SYSTEM] ${c.name}은(는) 점수를 주고 말았다.`, "warning", 0.75);
         if (c.mental <= 0) {
           c.mental = 0;
-          logLine(`>> [SYSTEM] ${c.name}은(는) 더 버티지 못하고 시합 후 2군으로 내려갔습니다`, "warning");
+          await logLine(">>", `[SYSTEM] ${c.name}은(는) 더 버티지 못하고 시합 후 2군으로 내려갔습니다`, "warning", 0.85);
           return;}
       }
       else {
-        await logGlitchLine(">>", `옆 수비수가 공을 잡아 뜬공 처리를 했습니다.`, "warning", 0.75);
+        await logLine(">>", `옆 수비수가 공을 잡아 뜬공 처리를 했습니다.`, "warning", 0.75);
         applyMental(c, +3);
       }
       return;
     }
-    else if (!chance(0.10)) {
-      await logGlitchLine(">>", `공을 제대로 잡아 1루로 송구했다`, "warning", 0.75);
-      await logGlitchLine(">>", `병살을 잡아 이닝이 종료되었습니다`, "warning", 0.85);
+    else if (!chance(0.50)) {
+      await logLine(">>", ` ${c.name}이(가) 공을 제대로 잡아 1루로 송구했다`, "warning", 0.75);
+      await logLine(">>", `병살을 잡아 이닝이 종료되었습니다`, "warning", 0.85);
       applyMental(c, +10)
     } 
     else {
-      await logGlitchLine(">>", `옆 수비수와 겹쳐 둘 다 공을 놓쳤다`, "warning", 0.75);
-      await logGlitchLine(">>", `그 사이 주자가 홈으로 들어왔습니다.`, "warning", 0.85);
+      await logLine(">>", ` ${c.name}와(과) 옆 수비수와 겹쳐 둘 다 공을 놓쳤다`, "warning", 0.75);
+      await logLine(">>", `그 사이 주자가 홈으로 들어왔습니다.`, "warning", 0.85);
       applyMental(c, -10);
     }
   } catch (e) {
@@ -1289,15 +1275,15 @@ async function eventOutfielderError(c) {
 }
 
 async function eventCatcherSChoice(c) {
-  if (c.position !== 'catcher') return;
+  if (c.position !== '포수') return;
   if (!chance(0.10)) return;
 
   try {
-    await logGlitchLine(">>", `번트 타구를 잡았다`, "warning", 0.55);
+    await logLine(">>", ` ${c.name}이(가) 번트 타구를 잡았다`, "warning", 0.55);
 
     const ans = await askChoice({
       title: "[CHOICE]",
-      body: `어디로 던지겠습니까?`,
+      body: ` ${c.name}, 어디로 던지겠습니까?`,
       options: [
         { label: "1루", value: "onebase" },
         { label: "3루", value: "threebase" },
@@ -1307,26 +1293,26 @@ async function eventCatcherSChoice(c) {
     if (ans === "threebase") {
       if (!chance(0.30)) {
         applyMental(c, -5);
-        logLine(`>> [SYSTEM] ${c.name}은(는) 주자를 전부 살려 버렸다.`, "warning");
+        await logLine(">>", `[SYSTEM] ${c.name}은(는) 주자를 전부 살려 버렸다.`, "warning", 0.75);
         if (c.mental <= 0) {
           c.mental = 0;
-          logLine(`>> [SYSTEM] ${c.name}은(는) 더 버티지 못하고 시합 후 2군으로 내려갔습니다`, "warning");
+          await logLine(">>", `[SYSTEM] ${c.name}은(는) 더 버티지 못하고 시합 후 2군으로 내려갔습니다`, "warning", 0.85);
           return;}
       }
       else {
-        await logGlitchLine(">>", `3루로 가던 주자를 아웃시켰다.`, "warning", 0.75);
+        await logLine(">>", `3루로 가던 주자를 아웃시켰다.`, "warning", 0.75);
         applyMental(c, +5);
       }
       return;
     }
     else if (!chance(0.50)) {
-      await logGlitchLine(">>", `공을 제대로 잡아 1루로 송구했다`, "warning", 0.75);
-      await logGlitchLine(">>", `1루 주자를 아웃시켰습니다. 3루는 세이프`, "warning", 0.85);
+      await logLine(">>", ` ${c.name}은(는) 공을 제대로 잡아 1루로 송구했다`, "warning", 0.75);
+      await logLine(">>", `1루 주자를 아웃시켰습니다. 3루는 세이프`, "warning", 0.85);
       applyMental(c, +3)
     } 
     else {
-      await logGlitchLine(">>", `1루에 송구 미스가 났다`, "warning", 0.75);
-      await logGlitchLine(">>", `그 사이 주자가 홈으로 들어왔습니다.`, "warning", 0.85);
+      await logLine(">>", `1루에 송구 미스가 났다`, "warning", 0.75);
+      await logLine(">>", `그 사이 주자가 홈으로 들어왔습니다.`, "warning", 0.85);
       applyMental(c, -10);
     }
   } catch (e) {
@@ -1335,15 +1321,15 @@ async function eventCatcherSChoice(c) {
 }
 
 async function eventbasesloadedInfilder(c) {
-  if (c.position !== 'infielder') return;
+  if (c.position !== '내야수') return;
   if (!chance(0.10)) return;
 
   try {
-    await logGlitchLine(">>", `만루 상황에 공이 ${c.name} 앞으로 굴러온다`, "warning", 0.55);
+    await logLine(">>", `만루 상황에 공이 ${c.name} 앞으로 굴러온다`, "warning", 0.55);
 
     const ans = await askChoice({
       title: "[CHOICE]",
-      body: `공을 어디로 던지시겠습니까?`,
+      body: ` ${c.name}, 공을 어디로 던지시겠습니까?`,
       options: [
         { label: "2루", value: "twobase" },
         { label: "홈", value: "home" },
@@ -1353,26 +1339,26 @@ async function eventbasesloadedInfilder(c) {
     if (ans === "home") {
       if (!chance(0.30)) {
         applyMental(c, -10);
-        logLine(`>> [SYSTEM] 송구 미스로 ${c.name}은(는) 점수를 주고 말았다. 2실점`, "warning");
+        await logLine(">>", `[SYSTEM] 송구 미스로 ${c.name}은(는) 점수를 주고 말았다. 2실점`, "warning", 0.75);
         if (c.mental <= 0) {
           c.mental = 0;
-          logLine(`>> [SYSTEM] ${c.name}은(는) 더 버티지 못하고 시합 후 2군으로 내려갔습니다`, "warning");
+          await logLine(">>", `[SYSTEM] ${c.name}은(는) 더 버티지 못하고 시합 후 2군으로 내려갔습니다`, "warning", 0.85);
           return;}
       }
       else {
-        await logGlitchLine(">>", `홈승부가 성공해 실점없이 아웃카운트를 잡았다.`, "warning", 0.75);
+        await logLine(">>", `홈승부가 성공해 실점없이 아웃카운트를 잡았다.`, "warning", 0.75);
         applyMental(c, +3);
       }
       return;
     }
-    else if (!chance(0.10)) {
-      await logGlitchLine(">>", `공을 제대로 잡아 2루로 송구했다`, "warning", 0.75);
-      await logGlitchLine(">>", `병살을 잡아 이닝이 종료되었습니다`, "warning", 0.85);
+    else if (!chance(0.50)) {
+      await logLine(">>", ` ${c.name}은(는) 공을 제대로 잡아 2루로 송구했다`, "warning", 0.75);
+      await logLine(">>", `병살을 잡아 이닝이 종료되었습니다`, "warning", 0.85);
       applyMental(c, +10)
     } 
     else {
-      await logGlitchLine(">>", `2루 주자만 아웃시켰다`, "warning", 0.75);
-      await logGlitchLine(">>", `그 사이 주자가 홈으로 들어왔습니다.`, "warning", 0.85);
+      await logLine(">>", ` ${c.name}은(는) 2루 주자만 아웃시켰다`, "warning", 0.75);
+      await logLine(">>", `그 사이 주자가 홈으로 들어왔습니다.`, "warning", 0.85);
       applyMental(c, -3);
     }
   } catch (e) {
@@ -1381,15 +1367,15 @@ async function eventbasesloadedInfilder(c) {
 }
 
 async function eventbasesloadedOutfilder(c) {
-  if (c.position !== 'outfielder') return;
+  if (c.position !== '외야수') return;
   if (!chance(0.10)) return;
 
   try {
-    await logGlitchLine(">>", `만루 상황에 공이 ${c.name} 앞으로 날라온다`, "warning", 0.55);
+    await logLine(">>", `만루 상황에 공이 ${c.name} 앞으로 날라온다`, "warning", 0.55);
 
     const ans = await askChoice({
       title: "[CHOICE]",
-      body: `공을 어디로 던지시겠습니까?`,
+      body: ` ${c.name}, 공을 어디로 던지시겠습니까?`,
       options: [
         { label: "3루", value: "threebase" },
         { label: "홈", value: "home" },
@@ -1399,26 +1385,26 @@ async function eventbasesloadedOutfilder(c) {
     if (ans === "home") {
       if (!chance(0.30)) {
         applyMental(c, -10);
-        logLine(`>> [SYSTEM] 송구 미스로 주자가 한 베이스씩 더 이동했다. 2실점`, "warning");
+        await logLine(">>", `[SYSTEM] 송구 미스로 주자가 한 베이스씩 더 이동했다. 2실점`, "warning", 0.75);
         if (c.mental <= 0) {
           c.mental = 0;
-          logLine(`>> [SYSTEM] ${c.name}은(는) 더 버티지 못하고 시합 후 2군으로 내려갔습니다`, "warning");
+          await logLine(">>", `[SYSTEM] ${c.name}은(는) 더 버티지 못하고 시합 후 2군으로 내려갔습니다`, "warning", 0.85);
           return;}
       }
       else {
-        await logGlitchLine(">>", `홈승부가 성공해 실점없이 아웃카운트 두개를 잡았다.`, "warning", 0.75);
+        await logLine(">>", `홈승부가 성공해 실점없이 아웃카운트 두개를 잡았다.`, "warning", 0.75);
         applyMental(c, +10);
       }
       return;
     }
-    else if (!chance(0.10)) {
-      await logGlitchLine(">>", `공을 제대로 잡아 3루로 송구했다`, "warning", 0.75);
-      await logGlitchLine(">>", `주자들이 진루하는 것을 막았습니다`, "warning", 0.85);
+    else if (!chance(0.50)) {
+      await logLine(">>", ` ${c.name}은(는) 공을 제대로 잡아 3루로 송구했다`, "warning", 0.75);
+      await logLine(">>", `주자들이 진루하는 것을 막았습니다`, "warning", 0.85);
       applyMental(c, +5)
     } 
     else {
-      await logGlitchLine(">>", `3루로 간 공이 빠졌다`, "warning", 0.75);
-      await logGlitchLine(">>", `그 사이 주자가 한명 더 홈으로 들어왔습니다. 2실점`, "warning", 0.85);
+      await logLine(">>", `3루로 간 공이 빠졌다`, "warning", 0.75);
+      await logLine(">>", `그 사이 주자가 한명 더 홈으로 들어왔습니다. 2실점`, "warning", 0.85);
       applyMental(c, -5);
     }
   } catch (e) {
@@ -1437,3 +1423,177 @@ function removeCharacterById(id) {
   const idx = characters.findIndex(x => x.id === id);
   if (idx >= 0) characters.splice(idx, 1);
 }
+
+/* 캐릭터 상태 표시 */
+// 1. 함수 정의 (파일 맨 끝에 추가)
+function renderStatusPanel() {
+    const list = document.getElementById("character-status-list");
+    if (!list) return;
+    list.innerHTML = ""; 
+
+    characters.forEach(c => {
+        const div = document.createElement("div");
+        div.className = "status-card";
+        div.onclick = () => openRelationModal(c.id); // 팝업 함수 호출
+        
+        div.innerHTML = `
+            <div style="font-weight:bold; font-size:1.1em;">${c.name}</div>
+            <div style="font-size:0.8em; color:#666; margin-bottom:8px;">${c.position}</div>
+            
+            <div style="font-size:0.8em;">멘탈 (${c.mental}%)</div>
+            <div class="bar-container"><div class="bar-fill" style="width:${c.mental}%; background:#4a90e2;"></div></div>
+            
+            <div style="font-size:0.8em;">에너지 (${c.energy}%)</div>
+            <div class="bar-container"><div class="bar-fill" style="width:${c.energy}%; background:#f5a623;"></div></div>
+        `;
+        list.appendChild(div);
+    });
+}
+
+// 2. 버튼 이벤트 연결 (기존 btn-to-game.onclick 찾아서 수정)
+document.getElementById('btn-to-game').onclick = () => {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-game').classList.add('active');
+    
+    // 화면이 그려진 직후에 상태창 데이터 채우기
+    setTimeout(renderStatusPanel, 50); 
+};
+// 예시: applyMental 함수 수정
+async function applyMental(c, delta) {
+  const bias = personalityBias(c);
+  const mult = bias?.mental ? 1 + bias.mental / 100 : 1;
+  const d = Math.round(delta * mult);
+
+  c.mental = Math.max(0, Math.min(100, c.mental + d));
+  await logLine("", `${c.name}의 멘탈이 ${d}만큼 ${delta > 0 ? "증가" : "감소"}`, "info", 0.4);
+  
+  renderStatusPanel(); // 상태창 즉시 갱신
+}
+
+document.getElementById('btn-to-game').onclick = () => {
+    document.getElementById('screen-relation').classList.remove('active');
+    document.getElementById('screen-game').classList.add('active');
+    
+    renderStatusPanel(); 
+};
+
+// 팝업 열기 함수
+function openRelationModal(charId) {
+    const char = characters.find(c => c.id === charId);
+    if (!char) return;
+
+    document.getElementById("modal-player-name").innerText = `${char.name}의 관계도`;
+    const listContainer = document.getElementById("modal-relation-list");
+    listContainer.innerHTML = "";
+
+    // 다른 선수들과의 관계 확인
+    characters.forEach(other => {
+        if (char.id === other.id) return; // 자기 자신 제외
+
+        const rel = char.relations[other.id] || { emotion: "none", stats: { affection: 0, tension: 0, dependence: 0 } };
+        
+        const relDiv = document.createElement("div");
+        relDiv.className = "rel-item";
+        relDiv.innerHTML = `
+            <div style="font-weight:bold;">vs ${other.name} (${translateEmotion(rel.emotion)})</div>
+            <div class="rel-stats-row">
+                <span class="stat-badge">❤️ 호감: ${rel.stats.affection}</span>
+                <span class="stat-badge">⚡ 긴장: ${rel.stats.tension}</span>
+                <span class="stat-badge">🔗 집착: ${rel.stats.dependence}</span>
+            </div>
+        `;
+        listContainer.appendChild(relDiv);
+    });
+
+    document.getElementById("relation-modal").style.display = "flex";
+}
+
+// 팝업 닫기 이벤트
+document.getElementById("btn-close-modal").onclick = () => {
+    document.getElementById("relation-modal").style.display = "none";
+};
+
+function renderStatusPanel() {
+    const container = document.getElementById("character-status-list");
+    if (!container) return;
+    container.innerHTML = "";
+
+    characters.forEach(c => {
+        const card = document.createElement("div");
+        card.className = "status-card";
+        card.onclick = () => openRelationModal(c.id);
+
+        card.innerHTML = `
+            <div style="font-weight:bold; margin-bottom:5px;">${c.name} <span style="font-size:0.8em; color:#888;">${c.position}</span></div>
+            <div style="font-size:0.85em;">멘탈: ${c.mental}</div>
+            <div class="status-bar-bg"><div class="status-bar-fill" style="width:${c.mental}%; background:#4a90e2;"></div></div>
+            <div style="font-size:0.85em;">에너지: ${c.energy}</div>
+            <div class="status-bar-bg"><div class="status-bar-fill" style="width:${c.energy}%; background:#f5a623;"></div></div>
+        `;
+        container.appendChild(card);
+    });
+}
+// [추가] 선수들의 정보를 화면에 생성하는 함수
+function renderStatusPanel() {
+    const container = document.getElementById("character-status-list");
+    if (!container) return;
+    container.innerHTML = ""; // 기존 내용 비우기
+
+    characters.forEach(c => {
+        const card = document.createElement("div");
+        card.className = "status-card";
+        // 클릭하면 팝업 열기 (팝업 함수는 이전 안내 참고)
+        card.onclick = () => typeof openRelationModal === 'function' && openRelationModal(c.id);
+
+        card.innerHTML = `
+            <div style="font-weight:bold; margin-bottom:5px; border-bottom:1px solid #eee;">${c.name}</div>
+            <div style="font-size:12px; color:#666;">멘탈: ${c.mental}%</div>
+            <div style="background:#eee; height:5px; border-radius:3px; margin-bottom:5px;">
+                <div style="background:#4a90e2; width:${c.mental}%; height:100%; border-radius:3px;"></div>
+            </div>
+            <div style="font-size:12px; color:#666;">에너지: ${c.energy}%</div>
+            <div style="background:#eee; height:5px; border-radius:3px;">
+                <div style="background:#f5a623; width:${c.energy}%; height:100%; border-radius:3px;"></div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+// 1. 탭 전환 함수: 모바일에서 로그와 상태창을 완전히 교체
+function switchTab(tabName) {
+    const logSection = document.getElementById('log-section');
+    const statusSection = document.getElementById('status-section');
+    const logTab = document.getElementById('tab-log');
+    const statusTab = document.getElementById('tab-status');
+
+    if (tabName === 'log') {
+        logSection.classList.add('active');
+        statusSection.classList.remove('active');
+        logTab.classList.add('active');
+        statusTab.classList.remove('active');
+    } else {
+        logSection.classList.remove('active');
+        statusSection.classList.add('active');
+        logTab.classList.remove('active');
+        statusTab.classList.add('active');
+        renderStatusPanel(); // 상태창으로 갈 때 최신 데이터로 다시 그림
+    }
+    
+    // 전환 시 스크롤을 맨 위로 초기화 (선택 사항)
+    logSection.scrollTop = 0;
+    statusSection.scrollTop = 0;
+}
+
+// 2. 초기 로드 시 모든 화면 끄고 인트로만 켜기
+window.onload = () => {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-intro').classList.add('active');
+};
+
+// 3. 게임 시작 버튼 클릭 시 렌더링 호출 확인
+document.getElementById('btn-to-game').onclick = () => {
+    document.getElementById('screen-relation').classList.remove('active');
+    document.getElementById('screen-game').classList.add('active');
+    renderStatusPanel();
+};

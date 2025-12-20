@@ -1,5 +1,5 @@
 /* ===============================
-   기본 리셋
+   1. 기본 리셋
 ================================ */
 * {
   box-sizing: border-box;
@@ -14,7 +14,7 @@ body {
 }
 
 /* ===============================
-   화면 공통
+   2. 화면 공통
 ================================ */
 .screen {
   display: none;
@@ -23,13 +23,10 @@ body {
   left: 0;
   width: 100%;
   height: 100vh;
-
   padding: 32px;
   overflow-y: auto;
-
   background: #f5f6f7;
 }
-
 
 .screen.active {
   display: block;
@@ -41,7 +38,7 @@ h1, h2, h3 {
 }
 
 /* ===============================
-   인트로
+   3. 인트로
 ================================ */
 #screen-intro {
   display: flex;
@@ -63,7 +60,7 @@ h1, h2, h3 {
 }
 
 /* ===============================
-   레이아웃
+   4. 레이아웃
 ================================ */
 .creation-layout,
 .relation-layout,
@@ -77,18 +74,28 @@ h1, h2, h3 {
   grid-template-columns: 2fr 1fr;
 }
 
+@media (max-width: 900px) {
+  .creation-layout,
+  .relation-layout,
+  .game-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ===============================
-   패널
+   5. 패널
 ================================ */
 .panel {
   background: #ffffff;
   border: 1px solid #e0e0e0;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ===============================
-   폼
+   6. 폼
 ================================ */
 .form-group {
   margin-bottom: 16px;
@@ -107,7 +114,7 @@ select {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid #d0d0d0;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
 }
 
@@ -118,15 +125,17 @@ select:focus {
 }
 
 /* ===============================
-   버튼
+   7. 버튼 (단순)
 ================================ */
 button {
   padding: 8px 14px;
-  border-radius: 6px;
-  border: 1px solid #cfcfcf;
+  border-radius: 8px;
+  border: 1px solid #ccc;
   background: #f9f9f9;
   cursor: pointer;
   font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s;
 }
 
 button:hover {
@@ -138,10 +147,9 @@ button:hover {
 #btn-set-relation,
 #btn-to-relation,
 #btn-to-game,
-#btn-next-day,
-#btn-export-log {
+#btn-next-day {
   background: #3b82f6;
-  color: #ffffff;
+  color: #fff;
   border: none;
 }
 
@@ -150,13 +158,23 @@ button:hover {
 #btn-set-relation:hover,
 #btn-to-relation:hover,
 #btn-to-game:hover,
-#btn-next-day:hover,
-#btn-export-log:hover {
+#btn-next-day:hover {
   background: #2563eb;
 }
 
+/* IO 버튼 */
+button.btn-io, .small-link {
+  background: #fff;
+  color: #3b82f6;
+  border: 1px solid #3b82f6;
+}
+
+button.btn-io:hover, .small-link:hover {
+  background: #e6f0fa;
+}
+
 /* ===============================
-   성격 태그
+   8. 태그 / 감정 버튼
 ================================ */
 .tag-container {
   display: flex;
@@ -174,30 +192,46 @@ button:hover {
 
 .tag-btn.selected {
   background: #3b82f6;
-  color: #ffffff;
+  color: #fff;
   border-color: #3b82f6;
 }
 
+.emotion-group {
+  display: flex;
+  gap: 8px;
+}
+
+.emotion-btn {
+  flex: 1;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: #f3f4f6;
+}
+
+.emotion-btn.active {
+  background: #93c5fd;
+  border-color: #60a5fa;
+}
+
 /* ===============================
-   캐릭터 카드
+   9. 캐릭터 카드 리스트
 ================================ */
 #char-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .mini-card {
   background: #fafafa;
   border: 1px solid #e5e5e5;
-  border-radius: 6px;
-  padding: 10px;
+  border-radius: 8px;
+  padding: 12px;
   font-size: 13px;
   position: relative;
-}
-
-.mini-card strong {
-  font-size: 14px;
 }
 
 .btn-delete {
@@ -215,108 +249,113 @@ button:hover {
 }
 
 /* ===============================
-   감정 버튼
+   10. 게임 화면 레이아웃
 ================================ */
-.emotion-group {
-  display: flex;
-  gap: 8px;
+#screen-game.active {
+  display: flex !important;
+  flex-direction: column; 
+  overflow: hidden;
 }
 
-.emotion-btn {
+.game-header-top { 
+  display: flex; 
+  justify-content: 
+  flex-start; 
+  align-items: baseline; 
+  gap: 20px; 
+  margin-bottom: 15px;
+  flex-shrink: 0; 
+}
+.game-main-content { 
+  display: flex; 
+  flex: 1; 
+  gap: 20px; 
+  min-height: 0; 
+}
+
+.content-box { 
+  background: white; 
+  border-radius: 12px; 
+  border: 1px solid #ddd;
+  display: flex;
+  flex-direction: column; 
+  padding: 15px; 
+  min-height: 0; 
+}
+
+#log-section {
+ flex:2;
+ position: relative;
+}
+
+#log-area {
   flex: 1;
+  background: #fafafa;
+  padding: 10px;
+  border-radius: 18px;
+  overflow-y: auto;
+  border: 1px solid #eee;
 }
+/* 상태창 섹션 */ 
+#status-section { 
+  flex: 1; 
+  max-width: 320px; 
+} 
 
-.emotion-btn.active {
-  background: #93c5fd;
-  border-color: #60a5fa;
+#character-status-list {
+  flex: 1; 
+  overflow-y: auto; 
+} 
+
+/* 하단 버튼 바 */ 
+.game-footer-controls { 
+  display: flex; 
+  gap: 12px; 
+  margin-top: 15px; 
+  padding-bottom: env(safe-area-inset-bottom); 
+  flex-shrink: 0; 
+
 }
-
-/* 게임 헤더 */
-.game-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.day-display {
-  font-size: 28px;
-  font-weight: 700;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-.small-link {
-  font-size: 12px;
-  margin-left: 12px;
-  background: none;
-  border: none;
-  color: #555;
-  cursor: pointer;
-}
-
-.today-log-area { margin-top: 8px; }
-.today-log-area .log-entry { margin: 6px 0; }
-
-#day-display {
-  font-size: 14px;
-  color: #555;
-}
-
-/* 로그 */
-.log-panel {
-  max-height: 420px;
+.status-panel {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 16px;
+  max-height: 80vh;
   overflow-y: auto;
 }
 
-.log-entry {
-  font-size: 14px;
-  line-height: 1.6;
-  padding: 6px 0;
-  border-bottom: 1px solid #eee;
+.status-card {
+  background: white;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 12px;
+  border-left: 5px solid #3b82f6;
 }
 
-/* 이벤트 */
-.event-panel h3 {
-  margin-top: 0;
+.bar-container {
+  background: #eee;
+  height: 8px;
+  border-radius: 4px;
+  margin: 6px 0;
 }
 
-.event-panel button {
-  width: 100%;
-  margin-top: 8px;
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  background: #3b82f6;
 }
 
-.game-controls {
-  margin-top: 20px;
-  display: flex;
-  gap: 12px;
-}
-
-@media (max-width: 900px) {
-  .creation-layout,
-  .relation-layout,
-  .game-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-
+/* ===============================
+   11. 테이블 (관계표)
+================================ */
 .relation-table-wrapper {
   margin-top: 24px;
   background: #ffffff;
   border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
-
-.relation-table-wrapper h3 {
-  margin-bottom: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-}
-
 
 #relation-table {
   width: 100%;
@@ -334,7 +373,6 @@ button:hover {
   word-break: break-word;
 }
 
-
 #relation-table thead th {
   background: #f8fafc;
   font-weight: 600;
@@ -348,16 +386,9 @@ button:hover {
   width: 90px;
 }
 
-
 #relation-table td {
   background: #ffffff;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
-
-#relation-table td:hover {
-  background: #f9fafb;
-}
-
 
 .self-cell {
   background: #f3f4f6 !important;
@@ -365,67 +396,60 @@ button:hover {
   font-weight: 500;
 }
 
+.emotion-interest { background: #eef6ff; }
+.emotion-dislike { background: #fff1f2; }
+.emotion-obsession { background: #fdf2f8; }
+.emotion-neutral { background: #f8fafc; }
 
-.emotion-interest {
-  background: #eef6ff;
+/* 12. 이벤트 패널 */
+.event-panel {
+  position: absolute; 
+  top: 0; 
+  left: 0; 
+  right: 0; 
+  bottom: 0; 
+  z-index: 100; 
+  background: #fffdf0; 
+  border: 2px solid #fadb14; 
+  padding: 20px; 
+  border-radius: 8px; 
+  overflow-y: auto;
 }
 
-.emotion-dislike {
-  background: #fff1f2;
+/* ===============================
+   13. 모바일
+================================ */
+/* [데스크탑/기본] 탭 버튼 숨기기 */
+.mobile-tabs {
+    display: none !important; /* 넓은 화면에선 버튼 아예 안 보임 */
 }
 
-.emotion-obsession {
-  background: #fdf2f8;
+/* [데스크탑/기본] 로그와 상태창을 좌우로 동시 노출 */
+.content-box {
+    display: flex !important; /* PC에선 두 박스 모두 항상 표시 */
 }
 
-.emotion-neutral {
-  background: #f8fafc;
-}
+/* ===============================
+   모바일 반응형 (768px 이하)
+================================ */
+@media (max-width: 768px) {
+    /* 모바일에서만 탭 버튼 노출 */
+    .mobile-tabs {
+        display: flex !important;
+        gap: 5px;
+        margin-bottom: 10px;
+        flex-shrink: 0;
+    }
 
+    /* 모바일에서는 비활성 탭 공간 제거 (하나씩만 보이게) */
+    .content-box {
+        display: none !important;
+    }
 
-#relation-table td strong {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: #111827;
-}
-
-
-.relation-context {
-  margin-top: 4px;
-  font-size: 11px;
-  color: #6b7280;
-  opacity: 0.85;
-}
-
-
-@media (max-width: 900px) {
-  #relation-table {
-    font-size: 12px;
-  }
-
-  #relation-table tbody th {
-    width: 70px;
-  }
-}
-
-.log.bright {
-  color: #333; /* 기본 글자 */
-  font-weight: 500;
-}
-
-.highlight {
-  color: #ff9900; 
-  font-weight: bold;
-}
-
-.italic {
-  font-style: italic;
-  color: #0077cc;   
-}
-
-.cheerful {
-  color: #00aa55;
-  font-weight: bold;
-  text-shadow: 1px 1px 2px #fff;
+    /* active 클래스가 붙은 박스만 크게 노출 */
+    .content-box.active {
+        display: flex !important;
+        width: 100% !important;
+        max-width: none !important;
+    }
 }

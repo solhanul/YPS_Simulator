@@ -128,36 +128,35 @@
 
         <!-- 메인 시뮬 -->
         <section id="screen-game" class="screen">
-            <header class="game-header">
+            <header class="game-header-top">
                 <h2>메인 시뮬</h2>
                 <span id="day-display-static">DAY 1</span>
             </header>
 
-            <div class="game-layout">
-
-                <!-- 로그 -->
-                <div class="panel log-panel">
-                <h3>기록</h3>
-                <button id="btn-show-all-logs" class="small-link">&larr; 이전로그보기</button>
-                <div id="log-area"></div>
-                </div>
-
-                <!-- 이벤트 -->
-                <div class="panel event-panel" id="event-container" style="display:none;">
-                <!-- JS로 이벤트 삽입 -->
-                </div>
-
+            <div class="mobile-tabs">
+                <button id="tab-log" class="tab-btn active" onclick="switchTab('log')">로그 보기</button>
+                <button id="tab-status" class="tab-btn" onclick="switchTab('status')">선수 상태</button>
             </div>
 
-            <div class="game-controls">
-                <button id="btn-next-day">하루 진행</button>
+            <div class="game-main-content">
+                <div id="log-section" class="content-box active">
+                    <div id="event-container" class="panel event-panel" style="display:none;"></div>
+                    <button id="btn-show-all-logs" class="small-link">← 이전로그보기</button>
+                    <div id="log-area"></div>
+                </div>
+                
+                <div id="status-section" class="content-box">
+                    <h3>선수 상태</h3>
+                    <div id="character-status-list"></div>
+                </div>
+            </div>
 
-                <!-- 진행 속도 컨트롤 제거: 시스템 고정 속도 사용 -->
-
+            <footer class="game-footer-controls">
+                <button id="btn-next-day">다음 날 진행</button>
                 <button id="btn-export-log" onclick="exportLogsAsTXT()">
                 로그 txt 저장
                 </button>
-            </div>
+            </footer>
         </section>
 
         <script src="script.js"></script>
