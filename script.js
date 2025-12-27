@@ -1256,7 +1256,6 @@ async function dayTick() {
         await GameEvents.eventLateNightCall(player);
         await GameEvents.eventOverheardMisunderstanding(player);
         
-        
         // 야구 관련 이벤트 (포지션 체크는 내부에서 함)
         await GameEvents.eventHardHitBall(player);
         await GameEvents.eventCatcherSChoice(player);
