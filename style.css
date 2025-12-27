@@ -576,3 +576,49 @@ button.btn-io:hover, .small-link:hover {
   background: #fafafa;
   padding: 0 10px;
 }
+
+
+
+/* 로그 영역 전체 스타일 */
+#log-area {
+  padding: 15px;
+  background: #fafafa;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+}
+
+/* 개별 로그 엔트리 (Flexbox 적용으로 줄맞춤 구현) */
+.log-entry {
+  display: flex;             /* 좌우 배치 */
+  align-items: baseline;     /* 텍스트 베이스라인 기준 정렬 */
+  margin-bottom: 8px;       /* 로그 간격 넓힘 */
+  font-size: 16px;           /* 글자 크기 키움 (가독성 향상) */
+  line-height: 1.6;          /* 줄간격 넉넉하게 */
+  color: #333;
+  word-break: keep-all;      /* 단어 단위 줄바꿈 */
+}
+
+/* [DAY n] 태그 스타일 */
+.log-day-tag {
+  flex-shrink: 0;           /* 너비 줄어들지 않음 */
+  width: 80px;              /* 고정 너비 (글자가 커졌으므로 조금 더 넓게) */
+  font-weight: 800;         /* 굵게 */
+  font-size: 14px;          /* 날짜는 본문보다 약간 작게 */
+  color: #888;              /* 회색조 */
+  text-align: left;         /* 왼쪽 정렬 */
+}
+
+/* 로그 본문 스타일 */
+.log-content {
+  flex: 1;                 
+  font-weight: 500;
+}
+
+/* 선택지 기록 스타일 (파란색 강조) */
+.log-choice-record {
+    color: #2563eb;
+    font-weight: 700;
+    background: #eff6ff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.95em;
+}

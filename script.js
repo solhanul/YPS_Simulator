@@ -77,7 +77,7 @@ const SOCIAL_EVENTS = {
             ],
             marriedB: [
                 ["{a}: 네 남편은 잘해주냐?", "{b}: ...그냥 그래요."],
-                ["{a}: 가끔은 네가 유부녀라는 걸 잊고 싶다.", "{b}: 선배님..."]
+                ["{a}: 가끔은 네가 유부남이라는 걸 잊고 싶다.", "{b}: 선배님..."]
             ]
         },
         mate: {
@@ -319,7 +319,6 @@ const GameLogic = {
 
 /* 로그 시스템 */
 const GameLogger = {
-    // ... 기존 write, logLine은 동일 ...
     write: async (entry) => {
         state.gameLogs.push(entry);
         state.visualQueue.push(entry);
@@ -327,7 +326,6 @@ const GameLogger = {
     },
 
     logLine: async (prefix, text, style = "system", delay = 0.6) => {
-        // 텍스트 앞의 접두어(이모지) 처리
         const content = prefix ? `${prefix} ${text}` : text;
         await GameLogger.write({ day: state.currentDay, text: content });
         await Utils.sleep(Math.round(delay * 1000));
@@ -343,32 +341,23 @@ const GameLogger = {
             while (state.visualQueue.length) {
                 const entry = state.visualQueue.shift();
                 
-                // 보기 모드 체크
                 const visibleDay = state.showAllLogs ? null : (state.lastDay ?? state.currentDay);
                 const shouldShow = state.showAllLogs || (entry.day === visibleDay || entry.day === state.currentDay);
 
                 if (shouldShow && area) {
-                    // 1. 날짜 헤더 확인
-                    // DOM의 마지막 day-divider를 확인하거나, state를 통해 추적
-                    const lastDivider = Array.from(area.querySelectorAll('.day-divider')).pop();
-                    const lastDayNum = lastDivider ? parseInt(lastDivider.dataset.day) : -1;
-
-                    if (lastDayNum !== entry.day) {
-                        const divDay = document.createElement("div");
-                        divDay.className = "day-divider";
-                        divDay.dataset.day = entry.day;
-                        divDay.innerHTML = `<span>DAY ${entry.day}</span>`;
-                        area.appendChild(divDay);
-                    }
-
-                    // 2. 로그 출력 (innerHTML 사용)
+                    // Flexbox 구조로 생성
                     const div = document.createElement("div");
                     div.className = "log-entry";
-                    div.innerHTML = entry.text; // <br> 태그 해석
-                    area.appendChild(div);
                     
+                    // [DAY n] 태그와 내용을 분리된 span으로 넣음
+                    div.innerHTML = `
+                        <span class="log-day-tag">[DAY ${entry.day}]</span>
+                        <span class="log-content">${entry.text}</span>
+                    `; 
+                    
+                    area.appendChild(div);
                     area.scrollTop = area.scrollHeight;
-                    await Utils.sleep(50); // 출력 속도
+                    await Utils.sleep(50);
                 }
             }
         } catch (e) {
@@ -505,25 +494,17 @@ const UIManager = {
         DOM.logArea.innerHTML = "";
         
         const visibleDay = state.showAllLogs ? null : (state.lastDay ?? state.currentDay);
-        let lastRenderedDay = -1; // 날짜 추적용
 
         state.gameLogs.forEach(entry => {
-            // 필터링
             if (visibleDay !== null && entry.day !== visibleDay && entry.day !== state.currentDay) return;
 
-            // 날짜 헤더 추가
-            if (lastRenderedDay !== entry.day) {
-                const divDay = document.createElement("div");
-                divDay.className = "day-divider";
-                divDay.innerHTML = `<span>DAY ${entry.day}</span>`;
-                DOM.logArea.appendChild(divDay);
-                lastRenderedDay = entry.day;
-            }
-
-            // 로그 내용 추가
             const div = document.createElement("div");
             div.className = "log-entry";
-            div.innerHTML = entry.text; // 여기서 <br>이 줄바꿈으로 변환됨
+            // 여기서도 구조 동일하게
+            div.innerHTML = `
+                <span class="log-day-tag">[DAY ${entry.day}]</span>
+                <span class="log-content">${entry.text}</span>
+            `;
             DOM.logArea.appendChild(div);
         });
         
@@ -627,58 +608,43 @@ const UIManager = {
 
 /* 이벤트 */
 const GameEvents = {
-    // 소셜 이벤트 (대화 등)
+    // 소셜 이벤트 (대화 등) 
     trySocialEvent: async (player, target, relation) => {
         if (!relation || !relation.context) return null;
         
         const hierarchy = relation.context.seniorJunior || "mate"; 
-        
         let pool = [];
 
-        // 1. 기혼자 금지된 사랑 (forbidden)
-        // 조건: 둘 중 하나라도 기혼자이면서 호감이 높거나 'obsession' 상태일 때
         const isForbidden = (player.married || target.married) && 
                             (relation.stats.affection > 30 || relation.type === 'obsessed');
         
         if (isForbidden && SOCIAL_EVENTS.forbidden) {
-            const contextEvents = SOCIAL_EVENTS.forbidden[hierarchy]; // junior, senior, mate
+            const contextEvents = SOCIAL_EVENTS.forbidden[hierarchy];
             if (contextEvents) {
-                // 주체가 기혼이면 marriedA, 타겟이 기혼이면 marriedB
-                // 둘 다 기혼이면 marriedA 우선 (임의 설정)
-                if (player.married && contextEvents.marriedA) {
-                    pool = contextEvents.marriedA;
-                } else if (target.married && contextEvents.marriedB) {
-                    pool = contextEvents.marriedB;
-                }
+                if (player.married && contextEvents.marriedA) pool = contextEvents.marriedA;
+                else if (target.married && contextEvents.marriedB) pool = contextEvents.marriedB;
             }
         }
         
-        // 2. 연인 (love)
         if (pool.length === 0 && relation.type === 'lover' && SOCIAL_EVENTS.love) {
             pool = SOCIAL_EVENTS.love[hierarchy];
         }
 
-        // 3. 라이벌 (rival) - 라이벌 관계이고 사이가 나쁠 때
         if (pool.length === 0 && relation.context.rival && relation.stats.affection < 0) {
              pool = SOCIAL_EVENTS.rival;
         }
 
-        // 4. 일반/호감 (comfort) - 기본적으로 대화 시도
         if (pool.length === 0 && SOCIAL_EVENTS.comfort) {
             pool = SOCIAL_EVENTS.comfort[hierarchy];
         }
 
-        // 풀이 비어있으면 종료
         if (!pool || pool.length === 0) return null;
 
-        // 대화 선택 및 변환
-        const tpl = Utils.randomFrom(pool);
+        const tpl = Utils.randomFrom(pool); // 수정 확인: Utils.randomFrom
         if (!tpl) return null;
 
-        // {a}, {b} 치환
         const line = tpl.map(s => s.replace('{a}', player.name).replace('{b}', target.name)).join('<br>');
         
-        // 대화 효과 적용 (간단하게)
         if (isForbidden) await GameLogic.applyTension(player, target, 10);
         else if (relation.type === 'lover') await GameLogic.applyAffection(player, target, 5);
 
@@ -690,17 +656,21 @@ const GameEvents = {
         if (!Utils.chance(0.10)) return;
         try {
             await GameLogger.logLine(">>", `${c.name}에게 SNS 디엠이 왔다`, "warning", 0.55);
+
             const ans = await UIManager.askChoice({
                 title: "[SNS]",
                 body: `${c.name}, 디엠에 답을 하시겠습니까?`,
                 options: [{ label: "대답한다", value: "enter" }, { label: "무시한다", value: "ignore" }]
             });
 
+            // 선택 로그 기록
+            await GameLogger.logLine("[SNS]", `디엠에 답을 하시겠습니까?`, "info", 0.7);
+            await GameLogger.logLine("📝", `<span class="log-choice-record">선택: ${ans === 'enter' ? '대답한다' : '무시한다'}</span>`, "desc", 0.5);
+
             if (ans === "ignore") {
                 await GameLogger.logLine(">>", `[SYSTEM] ${c.name}은(는) 디엠에 답을 하지 않았다.`, "warning", 0.75);
                 await GameLogic.applyMental(c, -5);
             } else {
-                // 성공/실패 랜덤
                 if (Utils.chance(0.5)) {
                     await GameLogger.logLine(">>", ` ${c.name}이 한 아이의 디엠을 받았습니다`, "warning", 0.75);
                     await GameLogger.logLine(">>", `아이에게 보낸 디엠이 퍼져 미담으로 번졌습니다`, "warning", 0.85);
@@ -718,7 +688,7 @@ const GameEvents = {
     // 투수 강습타구
     eventHardHitBall: async(c) => {      
         if (c.position !== '투수') return;
-        if (!chance(0.10)) return;
+        if (!Utils.chance(0.10)) return;
 
         try {
             await GameLogger.logLine("⚾", ` ${c.name}에게 강습타구가 날라온다`, "warning", 0.55);
@@ -729,12 +699,14 @@ const GameEvents = {
               options: [{ label: "잡는다", value: "catch" },{ label: "피한다", value: "ignore" },]
             });
 
+            await GameLogger.logLine("[CHOICE]", `강습타구를 잡으시겠습니까?`, "info", 0.7);
+            await GameLogger.logLine("📝", `<span class="log-choice-record">선택: ${ans === 'catch' ? '잡는다' : '피한다'}</span>`, "desc");
+
             if (ans === "ignore") {
               await GameLogger.logLine(">>", `[SYSTEM] ${c.name}은(는) 점수를 주고 말았다.`, "warning",  0.75);
               await GameLogic.applyMental(c, -5);
             } else {
-                // 성공/실패 랜덤
-                if (!chance(0.50)) {
+                if (!Utils.chance(0.50)) {
                     await GameLogger.logLine(">>", `강습타구를 제대로 잡아 1루로 송구하였습니다`, "warning", 0.75);
                     await GameLogger.logLine(">>", `병살을 잡아 이닝이 종료되었습니다`, "warning", 0.85);
                     await GameLogic.applyMental(c, +10);
@@ -751,7 +723,7 @@ const GameEvents = {
     // 내야수 실책
     eventInfielderError: async(c) => {      
         if (c.position !== '내야수') return;
-        if (!chance(0.10)) return;
+        if (!Utils.chance(0.10)) return;
 
         try {
             await GameLogger.logLine("⚾", `옆 수비수와 ${c.name} 사이에 공이 굴러온다`, "warning", 0.55);
@@ -762,9 +734,11 @@ const GameEvents = {
               options: [{ label: "잡는다", value: "catch" },{ label: "피한다", value: "ignore" },]
             });
 
+            await GameLogger.logLine("[CHOICE]", `공을 잡으시겠습니까?`, "info", 0.7);
+            await GameLogger.logLine("📝", `<span class="log-choice-record">선택: ${ans === 'catch' ? '잡는다' : '피한다'}</span>`, "desc");
+
             if (ans === "ignore") {
-                // 성공/실패 랜덤
-                if (!chance(0.50)) {
+                if (!Utils.chance(0.50)) {
                     await GameLogger.logLine(">>", `[SYSTEM] ${c.name}은(는) 점수를 주고 말았다.`, "warning", 0.75);       
                     await GameLogic.applyMental(c, -5);
 
@@ -773,8 +747,7 @@ const GameEvents = {
                     await GameLogic.applyMental(c, +3);
                 }
             } else {
-                // 성공/실패 랜덤
-                if (!chance(0.50)) {
+                if (!Utils.chance(0.50)) {
                     await GameLogger.logLine(">>", `${c.name}이(가) 공을 제대로 잡아 2루로 송구했다`, "warning", 0.75);
                     await GameLogger.logLine(">>", `병살을 잡아 이닝이 종료되었습니다`, "warning", 0.85);
                     await GameLogic.applyMental(c, +10);
@@ -790,7 +763,7 @@ const GameEvents = {
     // 외야수 실책
     eventOutfielderError: async(c) => {      
         if (c.position !== '외야수') return;
-        if (!chance(0.10)) return;
+        if (!Utils.chance(0.10)) return;
 
         try {
             await GameLogger.logLine("⚾", `옆 수비수와 ${c.name} 사이에 공이 날라온다`, "warning", 0.55);
@@ -801,9 +774,11 @@ const GameEvents = {
               options: [{ label: "잡는다", value: "catch" },{ label: "피한다", value: "ignore" },]
             });
 
+            await GameLogger.logLine("[CHOICE]", `공을 잡으시겠습니까?`, "info", 0.7);
+            await GameLogger.logLine("📝", `<span class="log-choice-record">선택: ${ans === 'catch' ? '잡는다' : '피한다'}</span>`, "desc");
+
             if (ans === "ignore") {
-                // 성공/실패 랜덤
-                if (!chance(0.50)) {
+                if (!Utils.chance(0.50)) {
                     await GameLogger.logLine(">>", `[SYSTEM] ${c.name}은(는) 점수를 주고 말았다.`, "warning", 0.75);       
                     await GameLogic.applyMental(c, -5);
 
@@ -812,8 +787,7 @@ const GameEvents = {
                     await GameLogic.applyMental(c, +3);
                 }
             } else {
-                // 성공/실패 랜덤
-                if (!chance(0.50)) {
+                if (!Utils.chance(0.50)) {
                     await GameLogger.logLine(">>", `${c.name}이(가) 공을 제대로 잡아 1루로 송구했다`, "warning", 0.75);
                     await GameLogger.logLine(">>", `병살을 잡아 이닝이 종료되었습니다`, "warning", 0.85);
                     await GameLogic.applyMental(c, +10);
@@ -829,7 +803,7 @@ const GameEvents = {
     // 포수: 주자선택
     eventCatcherSChoice: async(c) => {      
         if (c.position !== '포수') return;
-        if (!chance(0.10)) return;
+        if (!Utils.chance(0.10)) return;
 
         try {
             await GameLogger.logLine("⚾", `${c.name}이(가) 번트 타구를 잡았다`, "warning", 0.55);
@@ -840,9 +814,11 @@ const GameEvents = {
               options: [{ label: "1루", value: "onebase" },{ label: "3루", value: "threebase" },]
             });
 
+            await GameLogger.logLine("[CHOICE]", `어디로 던지겠습니까?`, "info", 0.7);
+            await GameLogger.logLine("📝", `<span class="log-choice-record">선택: ${ans === 'onebase' ? '1루' : '3루'}</span>`, "desc");
+
             if (ans === "threebase") {
-                // 성공/실패 랜덤
-                if (!chance(0.30)) {
+                if (!Utils.chance(0.30)) {
                     await GameLogger.logLine(">>", `[SYSTEM] ${c.name}은(는) 주자를 전부 살려 버렸다.`, "warning", 0.75);       
                     await GameLogic.applyMental(c, -5);
 
@@ -851,8 +827,7 @@ const GameEvents = {
                     await GameLogic.applyMental(c, +5);
                 }
             } else {
-                // 성공/실패 랜덤
-                if (!chance(0.50)) {
+                if (!Utils.chance(0.50)) {
                     await GameLogger.logLine(">>", `${c.name}은(는) 공을 제대로 잡아 1루로 송구했다`, "warning", 0.75);
                     await GameLogger.logLine(">>", `1루 주자를 아웃시켰습니다. 3루는 세이프`, "warning", 0.85);
                     await GameLogic.applyMental(c, +3);
@@ -868,10 +843,10 @@ const GameEvents = {
     // 내야수: 만루 선택
     eventInfielderSChoice: async(c) => {      
         if (c.position !== '내야수') return;
-        if (!chance(0.10)) return;
+        if (!Utils.chance(0.10)) return;
 
         try {
-            await GameLogger.logLine("⚾", `만루 상황에 공이 ${c.name} 앞으로 굴러온다`, "warning", 0.55);
+            await GameLogger.logLine("⚾", `1사 만루! ${c.name} 앞으로 땅볼이 옵니다.`, "warning", 0.55);
 
             const ans = await UIManager.askChoice({
               title: "[CHOICE]",
@@ -879,9 +854,11 @@ const GameEvents = {
               options: [{ label: "2루", value: "twobase" }, { label: "홈", value: "home" },]
             });
 
+            await GameLogger.logLine("[CHOICE]", `어디로 던지겠습니까?`, "info", 0.7);
+            await GameLogger.logLine("📝", `<span class="log-choice-record">선택: ${ans === 'twobase' ? '2루' : '홈'}</span>`, "desc");
+
             if (ans === "home") {
-                // 성공/실패 랜덤
-                if (!chance(0.30)) {
+                if (!Utils.chance(0.30)) {
                     await GameLogger.logLine(">>", `[SYSTEM] 송구 미스로 ${c.name}은(는) 점수를 주고 말았다.`, "warning", 0.75);       
                     await GameLogic.applyMental(c, -10);
 
@@ -890,8 +867,7 @@ const GameEvents = {
                     await GameLogic.applyMental(c, +8);
                 }
             } else {
-                // 성공/실패 랜덤
-                if (!chance(0.50)) {
+                if (!Utils.chance(0.50)) {
                     await GameLogger.logLine(">>", `${c.name}은(는) 공을 제대로 잡아 2루로 송구했다`, "warning", 0.75);
                     await GameLogger.logLine(">>", `병살을 잡아 이닝이 종료되었습니다`, "warning", 0.85);
                     await GameLogic.applyMental(c, +10);
@@ -907,20 +883,22 @@ const GameEvents = {
     // 외야수: 만루 선택
     eventOutfielderSChoice: async(c) => {      
         if (c.position !== '외야수') return;
-        if (!chance(0.10)) return;
+        if (!Utils.chance(0.10)) return;
 
         try {
             await GameLogger.logLine("⚾", `만루 상황에 공이 ${c.name} 앞으로 날라온다`, "warning", 0.55);
 
             const ans = await UIManager.askChoice({
               title: "[CHOICE]",
-              body: ` ${c.name}, 어디로 던지겠습니까?`,
+              body: `${c.name}, 어디로 던지겠습니까?`,
               options: [{ label: "3루", value: "threebase" }, { label: "홈", value: "home" },]
             });
+            
+            await GameLogger.logLine("[CHOICE]", `어디로 던지겠습니까?`, "info", 0.7);
+            await GameLogger.logLine("📝", `<span class="log-choice-record">선택: ${ans === 'threebase' ? '3루' : '홈'}</span>`, "desc");
 
             if (ans === "home") {
-                // 성공/실패 랜덤
-                if (!chance(0.30)) {
+                if (!Utils.chance(0.30)) {
                     await GameLogger.logLine(">>", `[SYSTEM] 송구 미스로 ${c.name}은(는) 2점을 주고 말았다.`, "warning", 0.75);       
                     await GameLogic.applyMental(c, -10);
 
@@ -929,8 +907,7 @@ const GameEvents = {
                     await GameLogic.applyMental(c, +10);
                 }
             } else {
-                // 성공/실패 랜덤
-                if (!chance(0.50)) {
+                if (!Utils.chance(0.50)) {
                     await GameLogger.logLine(">>", `${c.name}은(는) 공을 제대로 잡아 3루로 송구했다`, "warning", 0.75);
                     await GameLogger.logLine(">>", `타자 아웃 후 3루 주자가 득점에 성공했지만 추간 진루는 막았습니다`, "warning", 0.85);
                     await GameLogic.applyMental(c, +3);
@@ -943,13 +920,16 @@ const GameEvents = {
         } catch (e) { console.error(e); }
     },
 
+    // 고백 이벤트 (수정됨: state.characters, Utils.randomFrom 적용)
     eventConfessionMoment: async (c) => {
-        const candidates = characters.filter(target =>
+        // [수정] characters -> state.characters
+        const candidates = state.characters.filter(target =>
             c.id !== target.id && (c.relations[target.id]?.stats.affection >= 60)
         );
-        if (candidates.length === 0 || !chance(0.15)) return;
+        if (candidates.length === 0 || !Utils.chance(0.15)) return;
 
-        const target = randomFrom(candidates);
+        // [수정] randomFrom -> Utils.randomFrom
+        const target = Utils.randomFrom(candidates);
 
         try {
             await GameLogger.logLine("💌", `${c.name}의 심장이 평소보다 빠르게 뜁니다. ${target.name}에게 할 말이 있는 것 같습니다.`, "info", 0.7);
@@ -963,10 +943,13 @@ const GameEvents = {
                 ],
             });
 
+            await GameLogger.logLine("[개인 이벤트: 고백]", `${target.name}에게 오늘 밤 만나자고 할까요?`, "info", 0.7);
+            await GameLogger.logLine("📝", `<span class="log-choice-record">선택: ${ans === 'propose' ? '직진! 고백한다' : '아직은 때가 아니다, 참는다'}</span>`, "desc");
+
             if (ans === "propose") {
                 const targetAff = target.relations[c.id]?.stats.affection || 0;
 
-                if (targetAff >= 50 && !chance(0.5)) {
+                if (targetAff >= 50 && !Utils.chance(0.5)) {
                     await GameLogger.logLine("❤️", `[SUCCESS] ${target.name}이 고개를 끄덕였다`, "info", 1.0);
                     await GameLogic.applyAffection(c, target, 30);
                     await GameLogic.applyAffection(target, c, 30);
@@ -982,22 +965,19 @@ const GameEvents = {
         } catch (e) { console.error(e); }
     },
 
-
+    // 카페 이벤트 (수정됨: state.characters, Utils.randomFrom 적용)
     eventCafe: async (c) => {
-        const candidates = characters.filter(target =>
+        // [수정] characters -> state.characters
+        const candidates = state.characters.filter(target =>
             c.id !== target.id && (c.relations[target.id]?.stats.affection >= 0)
         );
-        if (candidates.length === 0 || !chance(0.15)) return;
+        if (candidates.length === 0 || !Utils.chance(0.15)) return;
 
-        const target = randomFrom(candidates);
+        // [수정] randomFrom -> Utils.randomFrom
+        const target = Utils.randomFrom(candidates);
 
         try {
-            await GameLogger.logLine(
-                "☕",
-                `${c.name}이 ${target.name}을 힐끔 본다`,
-                "info",
-                0.7
-            );
+            await GameLogger.logLine("☕",`${c.name}이 ${target.name}을 힐끔 본다`,"info",0.7);
 
             const ans = await UIManager.askChoice({
                 title: "[개인 이벤트: 데이트]",
@@ -1008,7 +988,10 @@ const GameEvents = {
                 ],
             });
 
-            if (ans === "propose" && !chance(0.4)) {
+            await GameLogger.logLine("[개인 이벤트: 데이트]", `${target.name}에게 경기 후 카페에 가자고 할까요?`, "info", 0.7);
+            await GameLogger.logLine("📝", `<span class="log-choice-record">선택: ${ans === 'propose' ? '카페에 가자' : '그만둔다'}</span>`, "desc");
+
+            if (ans === "propose" && !Utils.chance(0.4)) {
                 await GameLogger.logLine("❤️", `${target.name}이 고개를 끄덕였다`, "info", 1.0);
                 await GameLogic.applyAffection(c, target, 20);
                 await GameLogic.applyAffection(target, c, 20);
@@ -1023,21 +1006,18 @@ const GameEvents = {
         } catch (e) { console.error(e); }
     },
 
+    // 질투 이벤트 (수정됨: state.characters 적용)
     eventJealousyClash: async (c) => {
-        const jealousChar = characters.find(other =>
+        // [수정] characters -> state.characters
+        const jealousChar = state.characters.find(other =>
             other.id !== c.id &&
             (other.relations[c.id]?.type === "lover" ||
             other.relations[c.id]?.stats.affection >= 50)
         );
-        if (!jealousChar || !chance(0.2)) return;
+        if (!jealousChar || !Utils.chance(0.2)) return;
 
         try {
-            await GameLogger.logLine(
-                "👁️",
-                `${jealousChar.name}이 차가운 눈빛으로 ${c.name}을 바라본다`,
-                "warning",
-                0.7
-            );
+            await GameLogger.logLine("👁️",`${jealousChar.name}이 차가운 눈빛으로 ${c.name}을 바라본다`,"warning",0.7);
 
             const ans = await UIManager.askChoice({
                 title: "[개인 이벤트: 질투]",
@@ -1047,6 +1027,9 @@ const GameEvents = {
                     { label: "무시한다", value: "ignore" },
                 ],
             });
+
+            await GameLogger.logLine("[개인 이벤트: 질투]", `${jealousChar.name}: "아까 누구랑 있었어?`, "info", 0.7);
+            await GameLogger.logLine("📝", `<span class="log-choice-record">선택: ${ans === 'soothe' ? '달래준다' : '무시한다'}</span>`, "desc");
 
             if (ans === "soothe") {
                 await GameLogger.logLine(">>", `${jealousChar.name}의 표정이 조금 누그러졌다`, "info", 0.6);
@@ -1059,7 +1042,6 @@ const GameEvents = {
             }
         } catch (e) { console.error(e); }
     },
-
 
 };
 
@@ -1231,7 +1213,28 @@ function setupEventListeners() {
     
     // 전역 함수 연결 (HTML onclick 대응)
     window.switchTab = UIManager.switchTab;
-    window.exportLogsAsTXT = () => { /* 원본 유지 */ };
+    
+    // 로그 내보내기 함수 복구 (script.js에서 직접 정의)
+    window.exportLogsAsTXT = () => {
+        if (!state.gameLogs || state.gameLogs.length === 0) {
+            alert("저장할 로그가 없습니다.");
+            return;
+        }
+
+        const content = state.gameLogs
+            .map(l => `[DAY ${l.day}] ${l.text.replace(/<br>/g, "\n")}`) // <br>을 줄바꿈 문자로 변환
+            .join("\n");
+
+        const blob = new Blob([content], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "game_log.txt";
+        a.click();
+
+        URL.revokeObjectURL(url);
+    };
 }
 
 // 실행
