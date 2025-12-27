@@ -1077,6 +1077,120 @@ const GameEvents = {
         } catch (e) { console.error(e); }
     },
 
+    // 스킨십 경계 이벤트
+    eventPhysicalBoundary: async (c) => {
+        const candidates = state.characters.filter(target =>
+            c.id !== target.id &&
+            (c.relations[target.id]?.stats.affection >= 50) &&
+            (c.relations[target.id]?.type !== "lover")
+        );
+        if (candidates.length === 0 || !Utils.chance(0.14)) return;
+
+        const target = Utils.randomFrom(candidates);
+
+        try {
+            await GameLogger.logLine("⚠️", `순간적으로 ${target.name}과 거리가 너무 가까워졌다`, "warning", 0.7);
+
+            const ans = await UIManager.askChoice({
+                title: "[개인 이벤트: 경계선]",
+                body: `어떻게 반응할까?`,
+                options: [
+                    { label: "피하지 않는다", value: "stay" },
+                    { label: "거리를 둔다", value: "stepback" },
+                ],
+            });
+
+            await GameLogger.logLine("[개인 이벤트: 경계선]", `어떻게 반응할까?`, "info", 0.7);
+            await GameLogger.logLine("📝", `<span class="log-choice-record">선택: ${ans === "stay" ? "피하지 않는다" : "거리를 둔다"}</span>`, "desc");
+
+            if (ans === "stay") {
+                await GameLogger.logLine("…", `묘한 침묵이 흘렀다`, "info", 0.7);
+                await GameLogic.applyAffection(c, target, 10);
+                await GameLogic.applyTension(c, target, 10);
+            } else {
+                await GameLogger.logLine("…", `뒤로 한발짝 물러났다`, "default", 0.6);
+                await GameLogic.applyAffection(target, c, -5);
+                await GameLogic.applyTension(c, target, 5);
+            }
+        } catch (e) { console.error(e); }
+    },
+
+    // 밤중 연락 이벤트
+    eventLateNightCall: async (c) => {
+        const candidates = state.characters.filter(target =>
+            c.id !== target.id &&
+            (c.relations[target.id]?.stats.affection >= 30) &&
+            (target.stats.mental <= 60)
+        );
+        if (candidates.length === 0 || !Utils.chance(0.18)) return;
+
+        const target = Utils.randomFrom(candidates);
+
+        try {
+            await GameLogger.logLine("📱", `늦은 밤, ${target.name}에게서 연락이 왔다`, "info", 0.7);
+
+            const ans = await UIManager.askChoice({
+                title: "[개인 이벤트: 밤중 연락]",
+                body: `"지금… 잠깐 통화할 수 있어?"`,
+                options: [
+                    { label: "전화를 받는다", value: "answer" },
+                    { label: "내일 얘기하자고 한다", value: "delay" },
+                ],
+            });
+            
+            await GameLogger.logLine("[개인 이벤트: 밤중 연락]", `"지금… 잠깐 통화할 수 있어?"`, "info", 0.7);
+            await GameLogger.logLine("📝", `<span class="log-choice-record">선택: ${ans === "answer" ? "전화를 받는다" : "내일로 미룬다"}</span>`, "desc");
+
+            if (ans === "answer") {
+                await GameLogger.logLine("🌙", `조용한 통화가 이어졌다`, "info", 0.7);
+                await GameLogic.applyAffection(target, c, 10);
+            } else {
+                await GameLogger.logLine("…", `알겠다는 짧은 말 뒤에 전화가 끊겼다`, "warning", 0.6);
+                await GameLogic.applyAffection(target, c, -5);
+            }
+        } catch (e) { console.error(e); }
+    },
+
+    // 실수로 들은 말 (오해)
+    eventOverheardMisunderstanding: async (c) => {
+        const candidates = state.characters.filter(target =>
+            c.id !== target.id &&
+            (c.relations[target.id]?.stats.affection >= 40)
+        );
+        if (candidates.length === 0 || !Utils.chance(0.12)) return;
+
+        const target = Utils.randomFrom(candidates);
+
+        try {
+            await GameLogger.logLine("👂", `${c.name}은(는) 복도에서 우연히 ${target.name}의 대화를 듣는다`, "warning", 0.8);
+
+            const ans = await UIManager.askChoice({
+                title: "[개인 이벤트: 오해]",
+                body: `방금 들은 말이 나의 이야기인 것 같기도 하다.`,
+                options: [
+                    { label: "확인하러 간다", value: "check" },
+                    { label: "못 들은 척 한다", value: "ignore" },
+                ],
+            });
+
+            await GameLogger.logLine("[개인 이벤트: 오해]", `방금 들은 말이 나의 이야기인 것 같기도 하다.`, "info", 0.7);
+            await GameLogger.logLine("📝", `<span class="log-choice-record">선택: ${ans === "check" ? "확인하러 간다" : "못 들은 척 한다"}</span>`, "desc");
+
+            if (ans === "check" && Utils.chance(0.6)) {
+                await GameLogger.logLine("💬", `오해였다는 걸 알게 됐다`, "info", 0.7);
+                await GameLogic.applyAffection(c, target, 5);
+            } else if (ans === "check") {
+                await GameLogger.logLine("💥", `사실이라는 걸 알게 됐다`, "warning", 0.8);
+                await GameLogic.applyAffection(c, target, -10);
+                await GameLogic.applyTension(c, target, 10);
+            } else {
+                await GameLogger.logLine("…", `${c.name}은(는) 모른 척 지나쳤다`, "default", 0.6);
+                await GameLogic.applyTension(c, target, 5);
+            }
+        } catch (e) { console.error(e); }
+    },
+
+
 };
 
 /* 메인 루프 */
@@ -1137,6 +1251,11 @@ async function dayTick() {
         await GameEvents.eventSNS(player);
         await GameEvents.eventCafe(player);
         await GameEvents.eventJealousyClash(player);
+        await GameEvents.eventRelationshipCrack(player);
+        await GameEvents.eventPhysicalBoundary(player);
+        await GameEvents.eventLateNightCall(player);
+        await GameEvents.eventOverheardMisunderstanding(player);
+        
         
         // 야구 관련 이벤트 (포지션 체크는 내부에서 함)
         await GameEvents.eventHardHitBall(player);
