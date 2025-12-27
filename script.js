@@ -134,7 +134,6 @@ const Utils = {
 
     getCareerRank: (career) => {
         const ranks = { rookie: 1, midLevel: 2, experienced: 3, veteran: 4 };
-        // 한글 입력 대응
         for (const [k, v] of Object.entries(OPTIONS.CAREER)) {
             if (v === career) return ranks[k];
         }
@@ -186,7 +185,7 @@ const GameLogic = {
         
         const context = {
             seniorJunior: from.careerRank > to.careerRank ? "senior" : from.careerRank < to.careerRank ? "junior" : "mate",
-            rival: (from.position === to.position), // 단순화: 포지션 같으면 라이벌
+            rival: (from.position === to.position && from.careerRank === to.careerRank && fromAff <= -10 && toAff <= -10),
             forbidden: false
         };
 
@@ -208,54 +207,46 @@ const GameLogic = {
     },
 
     // 수치 조절 (멘탈)
+    
     applyMental: async (char, delta) => {
         const bias = Utils.getPersonalityBias(char.personality);
-        // 멘탈 보정이 있으면 변화폭에 영향 (예: 멘탈 강함 -> 감소폭 줄어듦)
-        const resistance = (bias.mental || 0) / 100; 
-        
+        const resistance = (bias.mental || 0) / 100;
+
         let finalDelta = delta;
-        // 멘탈이 깎일 때 방어력 적용
-        if (delta < 0 && resistance > 0) finalDelta = Math.round(delta * (1 - resistance * 0.5));
-        // 멘탈이 오를 때 보너스 적용
-        if (delta > 0 && resistance > 0) finalDelta = Math.round(delta * (1 + resistance * 0.5));
+        if (delta < 0 && resistance > 0) finalDelta = delta * (1 - resistance * 0.5);
+        if (delta > 0 && resistance > 0) finalDelta = delta * (1 + resistance * 0.5);
 
+        // 정수화
+        finalDelta = Math.round(finalDelta);
         char.mental = Utils.clamp(char.mental + finalDelta, 0, 100);
-        await GameLogger.logLine("", `${char.name}의 멘탈이 ${Math.abs(finalDelta)}만큼 ${finalDelta > 0 ? "증가" : "감소"}`, "info", 0.4);
+
+        if(finalDelta !== 0) {
+            await GameLogger.logLine("", `${char.name}의 멘탈 ${Math.abs(finalDelta)} ${finalDelta > 0 ? "증가" : "감소"}`, "info", 0.4);
+        }
         UIManager.renderStatusPanel();
     },
 
-    // 수치 조절 (에너지)
     applyEnergy: async (char, delta) => {
+        delta = Math.round(delta);
         char.energy = Utils.clamp(char.energy + delta, 0, 100);
-        await GameLogger.logLine("", `${char.name}의 에너지가 ${Math.abs(delta)}만큼 ${delta > 0 ? "증가" : "감소"}`, "info", 0.4);
         UIManager.renderStatusPanel();
     },
 
-    // 수치 조절 (애정도)
     applyAffection: async (player, target, delta) => {
         if (!player || !target) return;
-        
-        // 관계 데이터 없으면 초기화
+
         if (!player.relations[target.id]) {
             player.relations[target.id] = GameLogic.createRelation(player, target, 'neutral');
         }
 
         const rel = player.relations[target.id];
         const prev = rel.stats.affection;
-        
-        // -50 ~ 100 제한
-        rel.stats.affection = Utils.clamp(rel.stats.affection + delta, -50, 100);
+
+        // 정수화
+        rel.stats.affection = Math.round(Utils.clamp(rel.stats.affection + delta, -50, 100));
         const change = rel.stats.affection - prev;
 
-        if (change !== 0) {
-            const msg = change > 0 
-                ? `${player.name}이(가) ${target.name}에게 호감을 느낍니다. (+${change})`
-                : `${player.name}이(가) ${target.name}에게 실망했습니다. (${change})`;
-            const color = change > 0 ? "info" : "warning";
-            await GameLogger.logLine("😊", msg, color, 0.5);
-        }
-
-        // 쌍방향 데이터 보장
+        // 쌍방향 데이터 보장 (상대방도 나에 대한 관계 엔트리 생성)
         if (!target.relations[player.id]) {
             target.relations[player.id] = GameLogic.createRelation(target, player, 'neutral');
         }
@@ -267,16 +258,14 @@ const GameLogic = {
     applyTension: async (player, target, delta) => {
         if (!player.relations[target.id]) return;
         const rel = player.relations[target.id];
-        rel.stats.tension = Utils.clamp(rel.stats.tension + delta, -50, 100);
-        await GameLogger.logLine("⚡", `${player.name} → ${target.name} 긴장도 ${delta > 0 ? "상승" : "하락"}`, "warning", 0.4);
+        rel.stats.tension = Math.round(Utils.clamp(rel.stats.tension + delta, -50, 100));
         UIManager.refreshUIIfOpen(player.id);
     },
 
     applyObsession: async (player, target, delta) => {
         if (!player.relations[target.id]) return;
         const rel = player.relations[target.id];
-        rel.stats.dependence = Utils.clamp((rel.stats.dependence || 0) + delta, -50, 100);
-        await GameLogger.logLine("🔗", `${player.name} → ${target.name} 집착도 ${delta > 0 ? "상승" : "감소"}`, "warning", 0.4);
+        rel.stats.dependence = Math.round(Utils.clamp((rel.stats.dependence || 0) + delta, -50, 100));
         UIManager.refreshUIIfOpen(player.id);
     },
 
@@ -392,7 +381,7 @@ const UIManager = {
             const card = document.createElement("div");
             card.className = "mini-card";
             card.innerHTML = `
-                <strong>${c.name}</strong><br>
+                <strong>${c.name}</strong> (${c.married ? '기혼' : '미혼'})<br>
                 ${OPTIONS.CAREER[c.career]} / ${OPTIONS.POSITION[c.position]} / ${OPTIONS.PERSONALITY[c.personality]}
                 <button class="btn-delete">×</button>
             `;
@@ -409,12 +398,10 @@ const UIManager = {
         const from = document.getElementById("select-from");
         const to = document.getElementById("select-to");
         from.innerHTML = ""; to.innerHTML = "";
-        
+
         state.characters.forEach(c => {
-            const o1 = new Option(c.name, c.id);
-            const o2 = new Option(c.name, c.id);
-            from.add(o1);
-            to.add(o2);
+            from.add(new Option(c.name, c.id));
+            to.add(new Option(c.name, c.id));
         });
     },
 
@@ -468,7 +455,9 @@ const UIManager = {
 
             div.innerHTML = `
                 <div style="font-weight:bold; font-size:1.1em; margin-bottom:4px;">${c.name}</div>
-                <div style="font-size:0.8em; color:#666; margin-bottom:8px;">${c.position} / ${c.career}</div>
+                <div style="font-size:0.8em; color:#666; margin-bottom:8px;">
+                   ${c.position} / ${c.career} ${c.married ? '(기혼)' : ''}
+                </div>
                 <div style="font-size:0.8em;">멘탈 (${c.mental}%)</div>
                 <div class="bar-container"><div class="bar-fill" style="width:${c.mental}%; background:#4a90e2;"></div></div>
                 <div style="font-size:0.8em;">에너지 (${c.energy}%)</div>
@@ -596,20 +585,57 @@ const GameEvents = {
     trySocialEvent: async (player, target, relation) => {
         if (!relation || !relation.context) return null;
         
-        // 1. 라이벌
-        if (relation.context.rival && Utils.chance(0.3)) {
-            const pool = SOCIAL_EVENTS.rival;
-            const tpl = Utils.randomFrom(pool);
-            const line = tpl.map(s => s.replace('{a}', player.name).replace('{b}', target.name)).join(' ');
-            
-            await GameLogic.applyMental(player, -4);
-            await GameLogic.applyTension(player, target, 12);
-            await GameLogic.applyAffection(player, target, -5);
-            return line;
+        const hierarchy = relation.context.seniorJunior || "mate"; 
+        
+        let pool = [];
+
+        // 1. 기혼자 금지된 사랑 (forbidden)
+        // 조건: 둘 중 하나라도 기혼자이면서 호감이 높거나 'obsession' 상태일 때
+        const isForbidden = (player.married || target.married) && 
+                            (relation.stats.affection > 30 || relation.type === 'obsessed');
+        
+        if (isForbidden && SOCIAL_EVENTS.forbidden) {
+            const contextEvents = SOCIAL_EVENTS.forbidden[hierarchy]; // junior, senior, mate
+            if (contextEvents) {
+                // 주체가 기혼이면 marriedA, 타겟이 기혼이면 marriedB
+                // 둘 다 기혼이면 marriedA 우선 (임의 설정)
+                if (player.married && contextEvents.marriedA) {
+                    pool = contextEvents.marriedA;
+                } else if (target.married && contextEvents.marriedB) {
+                    pool = contextEvents.marriedB;
+                }
+            }
+        }
+        
+        // 2. 연인 (love)
+        if (pool.length === 0 && relation.type === 'lover' && SOCIAL_EVENTS.love) {
+            pool = SOCIAL_EVENTS.love[hierarchy];
         }
 
-        // 2. 위로/친밀
-        // 편의상 예시 하나만 남김. 후에 추가하시길 ㅈㅂ 추가해 잊지말고
+        // 3. 라이벌 (rival) - 라이벌 관계이고 사이가 나쁠 때
+        if (pool.length === 0 && relation.context.rival && relation.stats.affection < 0) {
+             pool = SOCIAL_EVENTS.rival;
+        }
+
+        // 4. 일반/호감 (comfort) - 기본적으로 대화 시도
+        if (pool.length === 0 && SOCIAL_EVENTS.comfort) {
+            pool = SOCIAL_EVENTS.comfort[hierarchy];
+        }
+
+        // 풀이 비어있으면 종료
+        if (!pool || pool.length === 0) return null;
+
+        // 대화 선택 및 변환
+        const tpl = Utils.randomFrom(pool);
+        if (!tpl) return null;
+
+        // {a}, {b} 치환
+        const line = tpl.map(s => s.replace('{a}', player.name).replace('{b}', target.name)).join('<br>');
+        
+        // 대화 효과 적용 (간단하게)
+        if (isForbidden) await GameLogic.applyTension(player, target, 10);
+        else if (relation.type === 'lover') await GameLogic.applyAffection(player, target, 5);
+
         return null; 
     },
 
@@ -794,7 +820,7 @@ const GameEvents = {
     },
 
     // 내야수: 만루 선택
-    eventCatcherSChoice: async(c) => {      
+    eventInfielderSChoice: async(c) => {      
         if (c.position !== '내야수') return;
         if (!chance(0.10)) return;
 
@@ -833,7 +859,7 @@ const GameEvents = {
     },
 
     // 외야수: 만루 선택
-    eventCatcherSChoice: async(c) => {      
+    eventOutfielderSChoice: async(c) => {      
         if (c.position !== '외야수') return;
         if (!chance(0.10)) return;
 
@@ -1007,21 +1033,33 @@ async function dayTick() {
             const target = state.characters.find(c => c.id === tid);
             if (!target) continue;
 
-            // 랜덤 소셜 이벤트
-            if (Utils.chance(0.35)) {
-                const soc = await GameEvents.trySocialEvent(player, target, relation);
-                if (soc) await GameLogger.write({ day, text: soc });
+            // 대화 이벤트 발생 (확률 40%)
+            if (Utils.chance(0.40)) {
+                const talkLine = await GameEvents.trySocialEvent(player, target, relation);
+                if (talkLine) {
+                    await GameLogger.write({ day, text: talkLine });
+                }
             }
 
-            // 미세 수치 조정
-            relation.stats.affection += (Math.random() * 2 - 1); // -1 ~ 1 변동
+            // 미세 감정 변화 (정수화)
+            const drift = Math.round(Math.random() * 2 - 1); 
+            if(drift !== 0) {
+                 relation.stats.affection = Utils.clamp(relation.stats.affection + drift, -50, 100);
+            }
             await Utils.sleep(CONSTANTS.TICK_RELATION_DELAY);
         }
 
         // 3. 개인 이벤트 (SNS, 야구 이벤트 등)
+        await GameEvents.eventConfessionMoment(player);
         await GameEvents.eventSNS(player);
+        await GameEvents.eventCafe(player);
+        await GameEvents.eventJealousyClash(player);
+        await GameEvents.eventHardHitBall(player);
+        await GameEvents.eventCatcherSChoice(player);
+        await GameEvents.eventOutfielderError(player);
         await GameEvents.eventInfielderError(player);
-        // await GameEvents.eventOutfielderError(player); // 필요한 것들 호출
+        await GameEvents.eventInfielderSChoice(player);
+        await GameEvents.eventOutfielderSChoice(player);
 
         await Utils.sleep(CONSTANTS.TICK_PLAYER_DELAY);
     }
@@ -1111,6 +1149,11 @@ function setupEventListeners() {
             await dayTick();
         } catch (e) { console.error(e); }
         finally { state.dayTickLocked = false; }
+    };
+
+    document.getElementById("btn-show-all-logs").onclick = () => {
+        state.showAllLogs = !state.showAllLogs;
+        UIManager.renderLogs();
     };
 
     // 탭 전환 등 기타
