@@ -13,7 +13,7 @@ const OPTIONS = {
 
 const EMOTION_PRESETS = {
     neutral: { affection: 10, tension: 10 },
-    interest: { affection: 40, tension: 20 },
+    interest: { affection: 30, tension: 20 },
     dislike: { affection: -20, tension: 0 },
     obsession: { affection: 60, tension: 40, dependence: 30 }
 };
@@ -949,8 +949,8 @@ const GameEvents = {
 
                 if (targetAff >= 50 && !Utils.chance(0.5)) {
                     await GameLogger.logLine("❤️", `[SUCCESS] ${target.name}이(가) 고개를 끄덕였다`, "info", 1.0);
-                    await GameLogic.applyAffection(c, target, 30);
-                    await GameLogic.applyAffection(target, c, 30);
+                    await GameLogic.applyAffection(c, target, 10);
+                    await GameLogic.applyAffection(target, c, 20);
                 } else {
                     await GameLogger.logLine("💔", `[FAIL] ${target.name}은(는) 조용히 거절했다`, "warning", 1.0);
                     await GameLogic.applyAffection(c, target, -10);
@@ -973,7 +973,7 @@ const GameEvents = {
         const target = Utils.randomFrom(candidates);
 
         try {
-            await GameLogger.logLine("☕",`${c.name}이 ${target.name}을 힐끔 본다`,"info",0.7);
+            await GameLogger.logLine("☕",`${c.name}이(가) ${target.name}을 힐끔 본다`,"info",0.7);
 
             const ans = await UIManager.askChoice({
                 title: "[개인 이벤트: 데이트]",
@@ -989,8 +989,7 @@ const GameEvents = {
 
             if (ans === "propose" && !Utils.chance(0.4)) {
                 await GameLogger.logLine("❤️", `${target.name}이(가) 고개를 끄덕였다`, "info", 1.0);
-                await GameLogic.applyAffection(c, target, 20);
-                await GameLogic.applyAffection(target, c, 20);
+                await GameLogic.applyAffection(c, target, 8);
             } else if (ans === "propose") {
                 await GameLogger.logLine("💔", `${target.name}이(가) 난처한 표정을 지었다`, "warning", 1.0);
                 await GameLogic.applyAffection(c, target, -5);
@@ -1029,7 +1028,7 @@ const GameEvents = {
             if (ans === "soothe") {
                 await GameLogger.logLine(">>", `${jealousChar.name}의 표정이 조금 누그러졌다`, "info", 0.6);
                 await GameLogic.applyAffection(jealousChar, c, 5);
-                await GameLogic.applyTension(jealousChar, c, -15);
+                await GameLogic.applyTension(jealousChar, c, -10);
             } else {
                 await GameLogger.logLine(">>", `공기가 싸늘해졌다`, "warning", 0.8);
                 await GameLogic.applyAffection(jealousChar, c, -10);
@@ -1064,7 +1063,7 @@ const GameEvents = {
             if (ans === "honest" && !Utils.chance(0.5)) {
                 await GameLogger.logLine("…", `대화 끝에 숨이 조금 트였다`, "info", 0.7);
                 await GameLogic.applyTension(c, target, -10);
-                await GameLogic.applyAffection(c, target, 5);
+                await GameLogic.applyAffection(c, target, 3);
             } else if (ans === "honest") {
                 await GameLogger.logLine("❄️", `대화가 싸움으로 번졌다`, "warning", 1.0);
                 await GameLogic.applyAffection(c, target, -5);
@@ -1105,7 +1104,7 @@ const GameEvents = {
 
             if (ans === "stay") {
                 await GameLogger.logLine("…", `묘한 침묵이 흘렀다`, "info", 0.7);
-                await GameLogic.applyAffection(c, target, 10);
+                await GameLogic.applyAffection(c, target, 8);
                 await GameLogic.applyTension(c, target, 10);
             } else {
                 await GameLogger.logLine("…", `뒤로 한발짝 물러났다`, "default", 0.6);
@@ -1143,7 +1142,7 @@ const GameEvents = {
 
             if (ans === "answer") {
                 await GameLogger.logLine("🌙", `조용한 통화가 이어졌다`, "info", 0.7);
-                await GameLogic.applyAffection(target, c, 10);
+                await GameLogic.applyAffection(target, c, 5);
             } else {
                 await GameLogger.logLine("…", `알겠다는 짧은 말 뒤에 전화가 끊겼다`, "warning", 0.6);
                 await GameLogic.applyAffection(target, c, -5);
